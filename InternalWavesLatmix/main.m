@@ -16,9 +16,9 @@ int main(int argc, const char * argv[])
         GLFloat latitude = 31;
         GLFloat width = 15e3;
         GLFloat height = 15e3;
-        NSUInteger Nx = 64;
-        NSUInteger Ny = 64;
-        NSUInteger Nz_in = 128; // Number of grid points upon which to project the input profile (512 rec.)
+        NSUInteger Nx = 128;
+        NSUInteger Ny = 128;
+        NSUInteger Nz_in = 512; // Number of grid points upon which to project the input profile (512 rec.)
         
         NSUInteger Nz_out = 50; // Number of grid points and range for the output
         GLFloat minDepth = -60;
@@ -64,7 +64,7 @@ int main(int argc, const char * argv[])
             
             // Interpolate the density onto the reduced grid (our z input grid).
             // Do I want to interpolate to a Chebyshev grid?
-            GLDimension *zDimRho = [[GLDimension alloc] initDimensionWithGrid: kGLEndpointGrid nPoints: Nz_in domainMin: zDim_full.domainMin length: zDim_full.domainLength];
+            GLDimension *zDimRho = [[GLDimension alloc] initDimensionWithGrid: kGLChebyshevEndpointGrid nPoints: Nz_in domainMin: zDim_full.domainMin length: zDim_full.domainLength];
             GLFunction *z = [GLFunction functionOfRealTypeFromDimension:zDimRho withDimensions:@[zDimRho] forEquation:equation];
             GLFunction *rho_bar = [rho_full interpolateAtPoints:@[z]];
             rho_bar.name = @"rho_bar";
