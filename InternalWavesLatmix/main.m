@@ -14,10 +14,10 @@ int main(int argc, const char * argv[])
 {
     @autoreleasepool {
         GLFloat latitude = 31;
-        GLFloat width = 10e3;
-        GLFloat height = 10e3;
-        NSUInteger Nx = 128;
-        NSUInteger Ny = 128;
+        GLFloat width = 15e3;
+        GLFloat height = 15e3;
+        NSUInteger Nx = 256;
+        NSUInteger Ny = 256;
         NSUInteger Nz_in = 512; // Number of grid points upon which to project the input profile (512 rec.)
         
         NSUInteger Nz_out = 50; // Number of grid points and range for the output
@@ -25,7 +25,7 @@ int main(int argc, const char * argv[])
         GLFloat maxDepth = 0;
         
         GLFloat maxWavePeriods = 7.0;
-        GLFloat horizontalFloatSpacingInMeters = 250;
+        GLFloat horizontalFloatSpacingInMeters = 125;
         GLFloat sampleTimeInMinutes = 15;
         GLFloat energyLevel = 1./80.;
         
@@ -249,7 +249,8 @@ int main(int argc, const char * argv[])
         /*		Create a NetCDF file and mutable variables in order to record some of the time steps.	*/
         /************************************************************************************************/
         
-        NSString *outputFile = [[NSSearchPathForDirectoriesInDomains(NSDesktopDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent: [NSString stringWithFormat: @"InternalWavesLatmix_%lu_%lu_%lu_GM_%.3f.nc", Nx, Ny, Nz_out,energyLevel]];
+//        NSString *outputFile = [[NSSearchPathForDirectoriesInDomains(NSDesktopDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent: [NSString stringWithFormat: @"InternalWavesLatmix_%lu_%lu_%lu_GM_%.3f.nc", Nx, Ny, Nz_out,energyLevel]];
+		NSString *outputFile = [NSString stringWithFormat: @"/Volumes/Data/InternalWavesLatmix_%lu_%lu_%lu_GM_%.3f.nc", Nx, Ny, Nz_out,energyLevel];
         GLNetCDFFile *netcdfFile = [[GLNetCDFFile alloc] initWithURL: [NSURL URLWithString: outputFile] forEquation: equation overwriteExisting: YES];
         
         [netcdfFile setGlobalAttribute: @(width) forKey: @"L_domain"];
