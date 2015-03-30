@@ -14,8 +14,8 @@ int main(int argc, const char * argv[])
 {
     @autoreleasepool {
         GLFloat latitude = 31;
-        GLFloat width = 15e3;
-        GLFloat height = 15e3;
+        GLFloat width = 10e3;
+        GLFloat height = 10e3;
         NSUInteger Nx = 128;
         NSUInteger Ny = 128;
         NSUInteger Nz_in = 512; // Number of grid points upon which to project the input profile (512 rec.)
@@ -24,14 +24,13 @@ int main(int argc, const char * argv[])
         GLFloat minDepth = -60;
         GLFloat maxDepth = 0;
         
-        GLFloat maxWavePeriods = 0.1;
-        GLFloat horizontalFloatSpacingInMeters = 1000;
+        GLFloat maxWavePeriods = 7.0;
+        GLFloat horizontalFloatSpacingInMeters = 250;
         GLFloat sampleTimeInMinutes = 15;
+        GLFloat energyLevel = 1./80.;
         
-        NSString *initialConditionsFile = [[NSSearchPathForDirectoriesInDomains(NSDesktopDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent: [NSString stringWithFormat: @"InternalWavesLatmix_%lu_%lu_%lu.internalwaves", Nx, Ny, Nz_out]];
-        NSString *outputFile = [[NSSearchPathForDirectoriesInDomains(NSDesktopDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent: [NSString stringWithFormat: @"InternalWavesLatmix_%lu_%lu_%lu.nc", Nx, Ny, Nz_out]];
+        NSString *initialConditionsFile = [[NSSearchPathForDirectoriesInDomains(NSDesktopDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent: [NSString stringWithFormat: @"InternalWavesLatmix_%lu_%lu_%lu_%luKM.internalwaves", Nx, Ny, Nz_out,(NSUInteger) (width/1e3)]];
         GLFloat f0 = 2*(7.2921e-5)*sin(latitude*M_PI/180);
-        
         
         /************************************************************************************************/
         /*		Create a density profile and compute the internal wave phases                           */
@@ -97,9 +96,9 @@ int main(int argc, const char * argv[])
             [zInterp solve]; // required!!!
             zDim = [[GLDimension alloc] initWithNPoints: zInterp.nDataPoints values: zInterp.data];
             zDim.name = @"z";
-            GLDimension *xDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints: Nx domainMin: -width/2 length: width];
+            xDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints: Nx domainMin: -width/2 length: width];
             xDim.name = @"x";
-            GLDimension *yDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints: Ny domainMin: -height/2 length: height];
+            yDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints: Ny domainMin: -height/2 length: height];
             yDim.name = @"y";
             
             // The ordering the dimensions is very deliberate here, for two reasons:
@@ -112,7 +111,7 @@ int main(int argc, const char * argv[])
             }
         }
         
-        [wave createGarrettMunkSpectrumWithEnergy: 1.0/16.0];
+        [wave createGarrettMunkSpectrumWithEnergy: energyLevel];
         
         // Create the time dimension
         GLFloat maxTime = maxWavePeriods*2*M_PI/f0;
@@ -250,6 +249,7 @@ int main(int argc, const char * argv[])
         /*		Create a NetCDF file and mutable variables in order to record some of the time steps.	*/
         /************************************************************************************************/
         
+        NSString *outputFile = [[NSSearchPathForDirectoriesInDomains(NSDesktopDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent: [NSString stringWithFormat: @"InternalWavesLatmix_%lu_%lu_%lu_GM_%.3f.nc", Nx, Ny, Nz_out,energyLevel]];
         GLNetCDFFile *netcdfFile = [[GLNetCDFFile alloc] initWithURL: [NSURL URLWithString: outputFile] forEquation: equation overwriteExisting: YES];
         
         [netcdfFile setGlobalAttribute: @(width) forKey: @"L_domain"];
