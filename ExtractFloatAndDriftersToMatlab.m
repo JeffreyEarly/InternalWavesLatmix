@@ -1,5 +1,11 @@
 file = '/Users/jearly/Desktop/InternalWavesLatmix_128_128_50_GM_0.013.nc';
+file = '/Volumes/Data/InternalWavesLatmix_256_256_50_GM_0.062.nc';
+file = '/Volumes/jearly/Desktop/InternalWavesLatmix_256_256_50_GM_0.031.nc';
 FloatFolder = '/Users/jearly/Desktop/InternalWavesLatmix_128_128_50_GM_0.013';
+FloatFolder = '/Users/jearly/Documents/LatMix/model/eighthGM';
+FloatFolder = '/Users/jearly/Documents/LatMix/model/sixteenthGM';
+FloatFolder = '/Users/jearly/Documents/LatMix/model/thirtysecondGM';
+
 if exist(FloatFolder,'dir') == 0
 	mkdir(FloatFolder);
 end
@@ -15,9 +21,13 @@ xIdx = [31 31 29 30 31 32 33 31 31];
 yIdx = [29 30 31 31 31 31 31 32 33];
 zIdx = [2 2 2 2 2 2 2 2 2];
 
-xp=double(ncread(file, 'x-position'));
-yp=double(ncread(file, 'y-position'));
-zp=double(ncread(file, 'z-position'));
+xIdx = 2*[31 31 29 30 31 32 33 31 31];
+yIdx = 2*[29 30 31 31 31 31 31 32 33];
+zIdx = [2 2 2 2 2 2 2 2 2];
+
+xp=double(ncread(file, 'x-position',[1 1 1 1], [Inf Inf Inf length(t)], [1 1 1 1]));
+yp=double(ncread(file, 'y-position',[1 1 1 1], [Inf Inf Inf length(t)], [1 1 1 1]));
+zp=double(ncread(file, 'z-position',[1 1 1 1], [Inf Inf Inf length(t)], [1 1 1 1]));
 
 x = zeros(length(t),length(xIdx));
 y = zeros(length(t),length(xIdx));
@@ -44,9 +54,9 @@ for i=1:length(xIdx)
    z(:,i) = zp(xIdx(i),yIdx(i),zIdx(i),:);
 end
 
-xp=double(ncread(file, 'x-position-diffusive'));
-yp=double(ncread(file, 'y-position-diffusive'));
-zp=double(ncread(file, 'z-position-diffusive'));
+xp=double(ncread(file, 'x-position-diffusive',[1 1 1 1], [Inf Inf Inf length(t)], [1 1 1 1]));
+yp=double(ncread(file, 'y-position-diffusive',[1 1 1 1], [Inf Inf Inf length(t)], [1 1 1 1]));
+zp=double(ncread(file, 'z-position-diffusive',[1 1 1 1], [Inf Inf Inf length(t)], [1 1 1 1]));
 
 subplot(2,2,2)
 plot(x,y)
@@ -62,9 +72,9 @@ for i=1:length(xIdx)
    z(:,i) = zp(xIdx(i),yIdx(i),zIdx(i),:);
 end
 
-xp=double(ncread(file, 'x-position-fixed-depth'));
-yp=double(ncread(file, 'y-position-fixed-depth'));
-zp=double(ncread(file, 'z-position-fixed-depth'));
+xp=double(ncread(file, 'x-position-fixed-depth',[1 1 1 1], [Inf Inf Inf length(t)], [1 1 1 1]));
+yp=double(ncread(file, 'y-position-fixed-depth',[1 1 1 1], [Inf Inf Inf length(t)], [1 1 1 1]));
+zp=double(ncread(file, 'z-position-fixed-depth',[1 1 1 1], [Inf Inf Inf length(t)], [1 1 1 1]));
 
 subplot(2,2,3)
 plot(x,y)
@@ -80,9 +90,9 @@ for i=1:length(xIdx)
    z(:,i) = zp(xIdx(i),yIdx(i),zIdx(i),:);
 end
 
-xp=double(ncread(file, 'x-position-drifter'));
-yp=double(ncread(file, 'y-position-drifter'));
-zp=double(ncread(file, 'z-position-drifter'));
+xp=double(ncread(file, 'x-position-drifter',[1 1 1 1], [Inf Inf Inf length(t)], [1 1 1 1]));
+yp=double(ncread(file, 'y-position-drifter',[1 1 1 1], [Inf Inf Inf length(t)], [1 1 1 1]));
+zp=double(ncread(file, 'z-position-drifter',[1 1 1 1], [Inf Inf Inf length(t)], [1 1 1 1]));
 
 subplot(2,2,4)
 plot(x,y)

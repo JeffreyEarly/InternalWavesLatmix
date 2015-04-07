@@ -20,14 +20,14 @@ int main(int argc, const char * argv[])
         NSUInteger Ny = 256;
         NSUInteger Nz_in = 512; // Number of grid points upon which to project the input profile (512 rec.)
         
-        NSUInteger Nz_out = 50; // Number of grid points and range for the output
-        GLFloat minDepth = -60;
+        NSUInteger Nz_out = 80; // Number of grid points and range for the output
+        GLFloat minDepth = -100;
         GLFloat maxDepth = 0;
         
-        GLFloat maxWavePeriods = 7.0;
+        GLFloat maxWavePeriods = 1.0;
         GLFloat horizontalFloatSpacingInMeters = 125;
         GLFloat sampleTimeInMinutes = 15;
-        GLFloat energyLevel = 1./80.;
+        GLFloat energyLevel = 1./16.;
         
         NSString *initialConditionsFile = [[NSSearchPathForDirectoriesInDomains(NSDesktopDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent: [NSString stringWithFormat: @"InternalWavesLatmix_%lu_%lu_%lu_%luKM.internalwaves", Nx, Ny, Nz_out,(NSUInteger) (width/1e3)]];
         GLFloat f0 = 2*(7.2921e-5)*sin(latitude*M_PI/180);
@@ -117,7 +117,7 @@ int main(int argc, const char * argv[])
         GLFloat maxTime = maxWavePeriods*2*M_PI/f0;
         GLFloat sampleTime = sampleTimeInMinutes*60;
         NSLog(@"Maximum wave period %d @ %02d:%02d (HH:MM)", (int) floor(maxTime/86400), ((int) floor(maxTime/3600))%24, ((int) floor(maxTime/60))%60);
-        GLDimension *tDim = [[GLDimension alloc] initDimensionWithGrid: kGLEndpointGrid nPoints: 1 + round(maxTime/sampleTime)  domainMin:0 length:maxTime];
+        GLDimension *tDim = [[GLDimension alloc] initDimensionWithGrid: kGLEndpointGrid nPoints: 1 + round(maxTime/sampleTime)  domainMin:0 length:round(maxTime/sampleTime)*sampleTime];
         tDim.name = @"time"; tDim.units = @"s";
         
         /************************************************************************************************/
@@ -201,7 +201,10 @@ int main(int argc, const char * argv[])
         GLFloat cflTimeStep = cfl * xDim.sampleInterval / maxSpeed;
         GLFloat outputTimeStep = sampleTimeInMinutes*60;
         GLFloat timeStep = cflTimeStep > outputTimeStep ? outputTimeStep : outputTimeStep / ceil(outputTimeStep/cflTimeStep);
-        
+		
+#warning Overriding time step!
+		timeStep = 50;
+		
         // Need this for the diffusive drifters
         GLFloat kappa = 5e-6; // m^2/s
         GLFloat norm = sqrt(timeStep*2*kappa);
