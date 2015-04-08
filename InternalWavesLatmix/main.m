@@ -14,16 +14,17 @@ int main(int argc, const char * argv[])
 {
     @autoreleasepool {
         GLFloat latitude = 31;
-        GLFloat width = 15e3;
-        GLFloat height = 15e3;
+        GLFloat width = 10e3;
+        GLFloat height = 10e3;
         NSUInteger Nx = 256;
         NSUInteger Ny = 256;
         NSUInteger Nz_in = 512; // Number of grid points upon which to project the input profile (512 rec.)
         
-        NSUInteger Nz_out = 80; // Number of grid points and range for the output
-        GLFloat minDepth = -100;
+        NSUInteger Nz_out = 50; // Number of grid points and range for the output
+        GLFloat minDepth = -60;
         GLFloat maxDepth = 0;
-        
+		
+		BOOL shouldIncludeDiffusiveFloats = NO;
         GLFloat maxWavePeriods = 1.0;
         GLFloat horizontalFloatSpacingInMeters = 125;
         GLFloat sampleTimeInMinutes = 15;
@@ -161,13 +162,18 @@ int main(int argc, const char * argv[])
         yFloatDim.name = @"y-float";
         GLDimension *zFloatDim = [[GLDimension alloc] initWithPoints: @[ @(-38), @(-31.5), @(-25)]];
         zFloatDim.name = @"z-float";
-        
+		
+		GLDimension *xDrifterDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints: ceil(width/horizontalFloatSpacingInMeters) domainMin: -width/2 length:width];
+		xDrifterDim.name = @"x-drifter";
+		GLDimension *yDrifterDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints:ceil(height/horizontalFloatSpacingInMeters)-1 domainMin: -height/2  length:height];
+		yDrifterDim.name = @"y-drifter";
+		
         // For consistency, we order the float dimensions the same as the dynamical variable dimensions.
         NSArray *floatDimensions = @[zFloatDim, xFloatDim, yFloatDim];
         GLFunction *xFloat = [GLFunction functionOfRealTypeFromDimension: xFloatDim withDimensions: floatDimensions forEquation: equation];
         GLFunction *yFloat = [GLFunction functionOfRealTypeFromDimension: yFloatDim withDimensions: floatDimensions forEquation: equation];
         GLFunction *zFloat = [GLFunction functionOfRealTypeFromDimension: zFloatDim withDimensions: floatDimensions forEquation: equation];
-        
+		
         GLFunction *xIsopycnal = [GLFunction functionFromFunction: xFloat];
         GLFunction *yIsopycnal = [GLFunction functionFromFunction: yFloat];
         GLFunction *zIsopycnal = [GLFunction functionFromFunction: zFloat];
@@ -181,11 +187,12 @@ int main(int argc, const char * argv[])
         GLFunction *xFixedDepth = [GLFunction functionFromFunction: xFloat];
         GLFunction *yFixedDepth = [GLFunction functionFromFunction: yFloat];
         GLFunction *zFixedDepth = [GLFunction functionFromFunction: zFloat];
-        
-        GLFunction *xDrifter = [GLFunction functionFromFunction: xFloat];
-        GLFunction *yDrifter = [GLFunction functionFromFunction: yFloat];
-        GLFunction *zDrifter = [GLFunction functionFromFunction: zFloat];
-        
+		
+		
+		NSArray *drifterDimensions = @[xDrifterDim, yDrifterDim];
+		GLFunction *xDrifter = [GLFunction functionOfRealTypeFromDimension: xDrifterDim withDimensions: drifterDimensions forEquation: equation];
+		GLFunction *yDrifter = [GLFunction functionOfRealTypeFromDimension: yDrifterDim withDimensions: drifterDimensions forEquation: equation];
+		
         // Determine index ranges over which to average for the drogues.
         GLFloat drogueMin = -33;
         GLFloat drogueMax = -27;
@@ -212,42 +219,65 @@ int main(int argc, const char * argv[])
         // RK4: dt/3 f(0) + dt/6 f(1) + dt/6 *f(4) + dt/3*f(3)
         // sqrt of ( (1/3)^2 + (1/6)^ + (1/6)^2 + (1/3)^2 )
         
-        NSArray *floatArray=@[xIsopycnal, yIsopycnal, zIsopycnal, xIsopycnalDiffusive, yIsopycnalDiffusive, zIsopycnalDiffusive, xFixedDepth, yFixedDepth, xDrifter, yDrifter];
-        GLAdaptiveRungeKuttaOperation *integrator = [GLAdaptiveRungeKuttaOperation rungeKutta4AdvanceY: floatArray stepSize: timeStep fFromTY:^(GLScalar *time, NSArray *yNew) {
-            NSArray *uv = timeToUV(time);
-            GLFunction *u2 = uv[0];
-            GLFunction *v2 = uv[1];
-            GLFunction *w2 = uv[2];
-            
-            GLFunction *xStep = [GLFunction functionWithNormallyDistributedValueWithDimensions: floatDimensions forEquation: wave.equation];
-            GLFunction *yStep = [GLFunction functionWithNormallyDistributedValueWithDimensions: floatDimensions forEquation: wave.equation];
-            GLFunction *zStep = [GLFunction functionWithNormallyDistributedValueWithDimensions: floatDimensions forEquation: wave.equation];
-            xStep = [xStep times: @(norm)];
-            yStep = [yStep times: @(norm)];
-            zStep = [zStep times: @(norm)];
-            
-            GLSimpleInterpolationOperation *interpIso = [[GLSimpleInterpolationOperation alloc] initWithFirstOperand: @[u2, v2, w2] secondOperand: @[yNew[2], yNew[0], yNew[1]]];
-            NSMutableArray *f = [interpIso.result mutableCopy];
-            
-            GLSimpleInterpolationOperation *interpIsoDiff = [[GLSimpleInterpolationOperation alloc] initWithFirstOperand: @[u2, v2, w2] secondOperand: @[yNew[5], yNew[3], yNew[4]]];
-            NSArray *f2 = @[[interpIsoDiff.result[0] plus: xStep], [interpIsoDiff.result[1] plus: yStep], [interpIsoDiff.result[2] plus: zStep]];
-            [f addObjectsFromArray: f2];
-            
-            GLSimpleInterpolationOperation *interpFixedDepth = [[GLSimpleInterpolationOperation alloc] initWithFirstOperand: @[u2, v2] secondOperand: @[zFixedDepth, yNew[6], yNew[7]]];
-            NSArray *f3 = @[[interpFixedDepth.result[0] plus: xStep], [interpFixedDepth.result[1] plus: yStep]];
-            [f addObjectsFromArray: f3];
-            
-            GLFunction *uMean = [uv[0] mean: 0 range: drogueRange];
-            GLFunction *vMean = [uv[1] mean: 0 range: drogueRange];
-            GLSimpleInterpolationOperation *interpDrifter = [[GLSimpleInterpolationOperation alloc] initWithFirstOperand: @[uMean, vMean] secondOperand: @[yNew[8], yNew[9]]];
-            NSArray *f4 = @[[interpDrifter.result[0] plus: xStep], [interpDrifter.result[1] plus: yStep]];
-            [f addObjectsFromArray: f4];
-            
-            return f;
-        }];
-        //integrator.absoluteTolerance = @[ @(1e0), @(1e0)];
-        //integrator.relativeTolerance = @[ @(1e-6), @(1e-6), @(1e-6)];
-        
+		NSArray *floatArray;
+		if (shouldIncludeDiffusiveFloats) {
+			floatArray=@[xIsopycnal, yIsopycnal, zIsopycnal, xFixedDepth, yFixedDepth, xDrifter, yDrifter, xIsopycnalDiffusive, yIsopycnalDiffusive, zIsopycnalDiffusive];
+		} else {
+			floatArray=@[xIsopycnal, yIsopycnal, zIsopycnal, xFixedDepth, yFixedDepth, xDrifter, yDrifter];
+		}
+		
+		FfromTYVector fFromTY = ^(GLScalar *time, NSArray *yNew) {
+			NSArray *uv = timeToUV(time);
+			GLFunction *u2 = uv[0];
+			GLFunction *v2 = uv[1];
+			GLFunction *w2 = uv[2];
+			
+			GLSimpleInterpolationOperation *interpIso = [[GLSimpleInterpolationOperation alloc] initWithFirstOperand: @[u2, v2, w2] secondOperand: @[yNew[2], yNew[0], yNew[1]]];
+			NSMutableArray *f = [interpIso.result mutableCopy];
+			
+			GLSimpleInterpolationOperation *interpFixedDepth = [[GLSimpleInterpolationOperation alloc] initWithFirstOperand: @[u2, v2] secondOperand: @[zFixedDepth, yNew[3], yNew[4]]];
+			
+			GLFunction *uMean = [uv[0] mean: 0 range: drogueRange];
+			GLFunction *vMean = [uv[1] mean: 0 range: drogueRange];
+			GLSimpleInterpolationOperation *interpDrifter = [[GLSimpleInterpolationOperation alloc] initWithFirstOperand: @[uMean, vMean] secondOperand: @[yNew[5], yNew[6]]];
+			
+			if (shouldIncludeDiffusiveFloats) {
+				GLFunction *xStep = [GLFunction functionWithNormallyDistributedValueWithDimensions: floatDimensions forEquation: wave.equation];
+				GLFunction *yStep = [GLFunction functionWithNormallyDistributedValueWithDimensions: floatDimensions forEquation: wave.equation];
+				GLFunction *zStep = [GLFunction functionWithNormallyDistributedValueWithDimensions: floatDimensions forEquation: wave.equation];
+				xStep = [xStep times: @(norm)];
+				yStep = [yStep times: @(norm)];
+				zStep = [zStep times: @(norm)];
+				
+				NSArray *f3 = @[[interpFixedDepth.result[0] plus: xStep], [interpFixedDepth.result[1] plus: yStep]];
+				[f addObjectsFromArray: f3];
+				
+				NSArray *f4 = @[[interpDrifter.result[0] plus: xStep], [interpDrifter.result[1] plus: yStep]];
+				[f addObjectsFromArray: f4];
+				
+				GLSimpleInterpolationOperation *interpIsoDiff = [[GLSimpleInterpolationOperation alloc] initWithFirstOperand: @[u2, v2, w2] secondOperand: @[yNew[9], yNew[7], yNew[8]]];
+				NSArray *f2 = @[[interpIsoDiff.result[0] plus: xStep], [interpIsoDiff.result[1] plus: yStep], [interpIsoDiff.result[2] plus: zStep]];
+				[f addObjectsFromArray: f2];
+			} else {
+				[f addObjectsFromArray: interpFixedDepth.result];
+				[f addObjectsFromArray: interpDrifter.result];
+			}
+			
+			return f;
+		};
+		
+		GLAdaptiveRungeKuttaOperation *integrator;
+		if (shouldIncludeDiffusiveFloats) {
+			integrator = [GLAdaptiveRungeKuttaOperation rungeKutta4AdvanceY: floatArray stepSize: timeStep fFromTY:fFromTY];
+		} else {
+			integrator = [GLAdaptiveRungeKuttaOperation rungeKutta23AdvanceY: floatArray stepSize: timeStep fFromTY:fFromTY];
+			integrator.absoluteTolerance = @[@(1e-2),@(1e-2),@(1e-2),@(1e-2),@(1e-2),@(1e-2),@(1e-2)]; // Should we allow an error of 1 cm?
+			integrator.absoluteTolerance = @[@(1e-1),@(1e-1),@(1e-1),@(1e-1),@(1e-1),@(1e-1),@(1e-1)]; // or 10 cm? Assuming a 1 minute time step, this is a max error of 150m per day.
+			//integrator.relativeTolerance = @[@(1e-1)];
+		}
+		
+
+		
         /************************************************************************************************/
         /*		Create a NetCDF file and mutable variables in order to record some of the time steps.	*/
         /************************************************************************************************/
@@ -281,16 +311,17 @@ int main(int argc, const char * argv[])
             scaledVariables[@"x-position"] = [y[0] scaleVariableBy: 1.0 withUnits: @"m" dimensionsBy: 1.0 units: @"float_id"];
             scaledVariables[@"y-position"] = [y[1] scaleVariableBy: 1.0 withUnits: @"m" dimensionsBy: 1.0 units: @"float_id"];
             scaledVariables[@"z-position"] = [y[2] scaleVariableBy: 1.0 withUnits: @"m" dimensionsBy: 1.0 units: @"float_id"];
-            scaledVariables[@"x-position-diffusive"] = [y[3] scaleVariableBy: 1.0 withUnits: @"m" dimensionsBy: 1.0 units: @"float_id"];
-            scaledVariables[@"y-position-diffusive"] = [y[4] scaleVariableBy: 1.0 withUnits: @"m" dimensionsBy: 1.0 units: @"float_id"];
-            scaledVariables[@"z-position-diffusive"] = [y[5] scaleVariableBy: 1.0 withUnits: @"m" dimensionsBy: 1.0 units: @"float_id"];
-            scaledVariables[@"x-position-fixed-depth"] = [y[6] scaleVariableBy: 1.0 withUnits: @"m" dimensionsBy: 1.0 units: @"float_id"];
-            scaledVariables[@"y-position-fixed-depth"] = [y[7] scaleVariableBy: 1.0 withUnits: @"m" dimensionsBy: 1.0 units: @"float_id"];
+            scaledVariables[@"x-position-fixed-depth"] = [y[3] scaleVariableBy: 1.0 withUnits: @"m" dimensionsBy: 1.0 units: @"float_id"];
+            scaledVariables[@"y-position-fixed-depth"] = [y[4] scaleVariableBy: 1.0 withUnits: @"m" dimensionsBy: 1.0 units: @"float_id"];
             scaledVariables[@"z-position-fixed-depth"] = [zFixedDepth scaleVariableBy: 1.0 withUnits: @"m" dimensionsBy: 1.0 units: @"float_id"];
-            scaledVariables[@"x-position-drifter"] = [y[8] scaleVariableBy: 1.0 withUnits: @"m" dimensionsBy: 1.0 units: @"float_id"];
-            scaledVariables[@"y-position-drifter"] = [y[9] scaleVariableBy: 1.0 withUnits: @"m" dimensionsBy: 1.0 units: @"float_id"];
-            scaledVariables[@"z-position-drifter"] = [zDrifter scaleVariableBy: 1.0 withUnits: @"m" dimensionsBy: 1.0 units: @"float_id"];
-            
+            scaledVariables[@"x-position-drifter"] = [y[5] scaleVariableBy: 1.0 withUnits: @"m" dimensionsBy: 1.0 units: @"drifter_id"];
+            scaledVariables[@"y-position-drifter"] = [y[6] scaleVariableBy: 1.0 withUnits: @"m" dimensionsBy: 1.0 units: @"drifter_id"];
+			if (shouldIncludeDiffusiveFloats ) {
+				scaledVariables[@"x-position-diffusive"] = [y[7] scaleVariableBy: 1.0 withUnits: @"m" dimensionsBy: 1.0 units: @"float_id"];
+				scaledVariables[@"y-position-diffusive"] = [y[8] scaleVariableBy: 1.0 withUnits: @"m" dimensionsBy: 1.0 units: @"float_id"];
+				scaledVariables[@"z-position-diffusive"] = [y[9] scaleVariableBy: 1.0 withUnits: @"m" dimensionsBy: 1.0 units: @"float_id"];
+			}
+			
             return scaledVariables;
         }];
         

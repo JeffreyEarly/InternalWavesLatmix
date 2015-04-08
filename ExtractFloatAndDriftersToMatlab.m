@@ -1,10 +1,10 @@
 file = '/Users/jearly/Desktop/InternalWavesLatmix_128_128_50_GM_0.013.nc';
 file = '/Volumes/Data/InternalWavesLatmix_256_256_50_GM_0.062.nc';
-file = '/Volumes/jearly/Desktop/InternalWavesLatmix_256_256_50_GM_0.031.nc';
+file = '/Volumes/jearly/Desktop/InternalWavesLatmix_256_256_50_GM_0.062.nc';
 FloatFolder = '/Users/jearly/Desktop/InternalWavesLatmix_128_128_50_GM_0.013';
 FloatFolder = '/Users/jearly/Documents/LatMix/model/eighthGM';
 FloatFolder = '/Users/jearly/Documents/LatMix/model/sixteenthGM';
-FloatFolder = '/Users/jearly/Documents/LatMix/model/thirtysecondGM';
+%FloatFolder = '/Users/jearly/Documents/LatMix/model/thirtysecondGM';
 
 if exist(FloatFolder,'dir') == 0
 	mkdir(FloatFolder);
