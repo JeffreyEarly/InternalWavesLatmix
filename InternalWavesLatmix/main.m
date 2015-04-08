@@ -25,10 +25,16 @@ int main(int argc, const char * argv[])
         GLFloat maxDepth = 0;
 		
 		BOOL shouldIncludeDiffusiveFloats = NO;
-        GLFloat maxWavePeriods = 1.0;
+        GLFloat maxWavePeriods = 10.0;
         GLFloat horizontalFloatSpacingInMeters = 125;
         GLFloat sampleTimeInMinutes = 15;
         GLFloat energyLevel = 1./16.;
+		
+		BOOL shouldApplyStrainField = YES;
+		GLFloat sigma = 3.52e-6;
+		GLFloat theta = -32.7;
+		GLFloat sigma_n = sigma*cos(2*theta*M_PI/180.);
+		GLFloat sigma_s = sigma*sin(2*theta*M_PI/180.);
         
         NSString *initialConditionsFile = [[NSSearchPathForDirectoriesInDomains(NSDesktopDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent: [NSString stringWithFormat: @"InternalWavesLatmix_%lu_%lu_%lu_%luKM.internalwaves", Nx, Ny, Nz_out,(NSUInteger) (width/1e3)]];
         GLFloat f0 = 2*(7.2921e-5)*sin(latitude*M_PI/180);
@@ -140,6 +146,13 @@ int main(int argc, const char * argv[])
             
             return @[u,v,w,rho,zeta];
         };
+		
+		
+		NSArray *(^positionToUV) (GLFunction *, GLFunction *) = ^(GLFunction *x, GLFunction *y) {
+			GLFunction *u = [[x times: @(sigma_n/2)] plus: [y times: @(sigma_s/2)]];
+			GLFunction *v = [[x times: @(sigma_s/2)] minus: [y times: @(sigma_n/2)]];
+			return @[u,v];
+		};
         
         GLScalar *t = [GLScalar scalarWithValue: 0.0*2*M_PI/f0 forEquation: equation];
         NSArray *uv = timeToUV(t);
@@ -225,7 +238,6 @@ int main(int argc, const char * argv[])
 		} else {
 			floatArray=@[xIsopycnal, yIsopycnal, zIsopycnal, xFixedDepth, yFixedDepth, xDrifter, yDrifter];
 		}
-		
 		FfromTYVector fFromTY = ^(GLScalar *time, NSArray *yNew) {
 			NSArray *uv = timeToUV(time);
 			GLFunction *u2 = uv[0];
@@ -261,6 +273,21 @@ int main(int argc, const char * argv[])
 			} else {
 				[f addObjectsFromArray: interpFixedDepth.result];
 				[f addObjectsFromArray: interpDrifter.result];
+				
+				if (shouldApplyStrainField) {
+					GLFunction *u_strain = [[yNew[0] times: @(sigma_n/2)] plus: [yNew[1] times: @(sigma_s/2)]];
+					GLFunction *v_strain = [[yNew[0] times: @(sigma_s/2)] minus: [yNew[1] times: @(sigma_n/2)]];
+					f[0] = [f[0] plus: u_strain];
+					f[1] = [f[1] plus: v_strain];
+					u_strain = [[yNew[3] times: @(sigma_n/2)] plus: [yNew[4] times: @(sigma_s/2)]];
+					v_strain = [[yNew[3] times: @(sigma_s/2)] minus: [yNew[4] times: @(sigma_n/2)]];
+					f[3] = [f[3] plus: u_strain];
+					f[4] = [f[4] plus: v_strain];
+					u_strain = [[yNew[5] times: @(sigma_n/2)] plus: [yNew[6] times: @(sigma_s/2)]];
+					v_strain = [[yNew[5] times: @(sigma_s/2)] minus: [yNew[6] times: @(sigma_n/2)]];
+					f[5] = [f[5] plus: u_strain];
+					f[6] = [f[6] plus: v_strain];
+				}
 			}
 			
 			return f;
@@ -281,9 +308,10 @@ int main(int argc, const char * argv[])
         /************************************************************************************************/
         /*		Create a NetCDF file and mutable variables in order to record some of the time steps.	*/
         /************************************************************************************************/
-        
-//        NSString *outputFile = [[NSSearchPathForDirectoriesInDomains(NSDesktopDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent: [NSString stringWithFormat: @"InternalWavesLatmix_%lu_%lu_%lu_GM_%.3f.nc", Nx, Ny, Nz_out,energyLevel]];
-		NSString *outputFile = [NSString stringWithFormat: @"/Volumes/Data/InternalWavesLatmix_%lu_%lu_%lu_GM_%.3f.nc", Nx, Ny, Nz_out,energyLevel];
+		
+		NSString *filename = shouldApplyStrainField ? [NSString stringWithFormat: @"/InternalWavesLatmixStrained_%lu_%lu_%lu_GM_%.3f.nc", Nx, Ny, Nz_out,energyLevel] : [NSString stringWithFormat: @"/InternalWavesLatmix_%lu_%lu_%lu_GM_%.3f.nc", Nx, Ny, Nz_out,energyLevel];
+//        NSString *outputFile = [[NSSearchPathForDirectoriesInDomains(NSDesktopDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent: filename];
+		NSString *outputFile = [NSString stringWithFormat: @"/Volumes/Data/%@", filename];
         GLNetCDFFile *netcdfFile = [[GLNetCDFFile alloc] initWithURL: [NSURL URLWithString: outputFile] forEquation: equation overwriteExisting: YES];
         
         [netcdfFile setGlobalAttribute: @(width) forKey: @"L_domain"];
