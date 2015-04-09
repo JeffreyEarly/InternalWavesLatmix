@@ -47,10 +47,13 @@ psi=[];
 
 omega = [ -flipud(omega_p(2:end)); omega_p];
 S = [flipud(vmean(Snn,2)); vmean(Spp(2:end,:),2)]/(4*pi);
+% A factor of 1/(2*pi) so this sums to the variance, then another factor of
+% 1/2 so that it's a kinetic energy.
 
 figure
 
-% The N0/N_50 factor 
+% The N0/N_50 factor WKB normalizes it, and the 2*pi/3600 converts to RC's
+% units.
 plot( 3600*omega/(2*pi), (N0/N_50)*2*pi*S/3600, 'red', 'LineWidth', 2)
 
 
@@ -94,6 +97,6 @@ plot( frequency_cph, HKEsp_m2s2_cph_wkb(:,LatMixSite), 'Color', 'green', 'LineWi
 hold on
 plot( gmfreqcph, gmHKEcph, 'Color', 'blue', 'LineWidth', 2)
 plot( gmfreqcph, 2*pi*S_gm/3600, 'Color', 'black', 'LineWidth', 2)
-plot( 3600*omega/(2*pi), 2*pi*HKE_model/3600, 'Color', 'magenta', 'LineWidth', 2)
+plot( 3600*omega/(2*pi), (N0/N_50)*2*pi*HKE_model/3600, 'Color', 'magenta', 'LineWidth', 2)
 xlim([0.0 0.6])
 ylim([1e-4 2e-2])

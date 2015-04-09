@@ -14,23 +14,23 @@ int main(int argc, const char * argv[])
 {
     @autoreleasepool {
         GLFloat latitude = 31;
-        GLFloat width = 10e3;
-        GLFloat height = 10e3;
+        GLFloat width = 60e3;
+        GLFloat height = 15e3;
         NSUInteger Nx = 256;
-        NSUInteger Ny = 256;
+        NSUInteger Ny = 64;
         NSUInteger Nz_in = 512; // Number of grid points upon which to project the input profile (512 rec.)
         
-        NSUInteger Nz_out = 50; // Number of grid points and range for the output
-        GLFloat minDepth = -60;
+        NSUInteger Nz_out = 80; // Number of grid points and range for the output
+        GLFloat minDepth = -100;
         GLFloat maxDepth = 0;
 		
 		BOOL shouldIncludeDiffusiveFloats = NO;
         GLFloat maxWavePeriods = 10.0;
         GLFloat horizontalFloatSpacingInMeters = 125;
         GLFloat sampleTimeInMinutes = 15;
-        GLFloat energyLevel = 1./16.;
+        GLFloat energyLevel = 1./8.;
 		
-		BOOL shouldApplyStrainField = YES;
+		BOOL shouldApplyStrainField = NO;
 		GLFloat sigma = 3.52e-6;
 		GLFloat theta = -32.7;
 		GLFloat sigma_n = sigma*cos(2*theta*M_PI/180.);
