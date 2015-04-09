@@ -3,7 +3,8 @@ N_50 = 2*pi*1.7e-3; % radians per second
 
 % Model
 file = '/Volumes/jearly/Desktop/InternalWavesLatmix_256_256_50_GM_0.042.nc';
-file = '/Volumes/home/jearly/InternalWavesLatmix_256_256_50_GM_0.062.nc';
+file = '/Volumes/home/jearly/InternalWavesLatmix_256_64_80_GM_0.016.nc';
+% file = '/Volumes/Data/InternalWavesLatmix_256_64_80_GM_0.008.nc';
 % file = '/Volumes/Data/InternalWavesLatmix_256_256_50_GM_0.062.nc';
 % file = '/Volumes/Data/InternalWaveSimulations/InternalWavesGMSpectrumExponentialStratification.nc';
 N2 = double(ncread(file, 'N2'));
