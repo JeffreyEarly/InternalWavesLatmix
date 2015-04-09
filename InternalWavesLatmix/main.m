@@ -28,9 +28,9 @@ int main(int argc, const char * argv[])
         GLFloat maxWavePeriods = 10.0;
         GLFloat horizontalFloatSpacingInMeters = 125;
         GLFloat sampleTimeInMinutes = 15;
-        GLFloat energyLevel = 1./8.;
+        GLFloat energyLevel = 1./64.;
 		
-		BOOL shouldApplyStrainField = NO;
+		BOOL shouldApplyStrainField = YES;
 		GLFloat sigma = 3.52e-6;
 		GLFloat theta = -32.7;
 		GLFloat sigma_n = sigma*cos(2*theta*M_PI/180.);
@@ -169,16 +169,17 @@ int main(int argc, const char * argv[])
         /*		Let's also plop a float at a bunch of grid points.                                      */
         /************************************************************************************************/
         
-        GLDimension *xFloatDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints: ceil(width/horizontalFloatSpacingInMeters) domainMin: -width/2 length:width];
+        GLFloat particleDomain = 7.5e3;
+        GLDimension *xFloatDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints: ceil(particleDomain/horizontalFloatSpacingInMeters) domainMin: -particleDomain/2 length:particleDomain];
         xFloatDim.name = @"x-float";
-        GLDimension *yFloatDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints:ceil(height/horizontalFloatSpacingInMeters)-1 domainMin: -height/2  length:height];
+        GLDimension *yFloatDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints:ceil(particleDomain/horizontalFloatSpacingInMeters)-1 domainMin: -particleDomain/2  length:particleDomain];
         yFloatDim.name = @"y-float";
         GLDimension *zFloatDim = [[GLDimension alloc] initWithPoints: @[ @(-38), @(-31.5), @(-25)]];
         zFloatDim.name = @"z-float";
 		
-		GLDimension *xDrifterDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints: ceil(width/horizontalFloatSpacingInMeters) domainMin: -width/2 length:width];
+		GLDimension *xDrifterDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints: ceil(particleDomain/horizontalFloatSpacingInMeters) domainMin: -particleDomain/2 length:particleDomain];
 		xDrifterDim.name = @"x-drifter";
-		GLDimension *yDrifterDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints:ceil(height/horizontalFloatSpacingInMeters)-1 domainMin: -height/2  length:height];
+		GLDimension *yDrifterDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints:ceil(particleDomain/horizontalFloatSpacingInMeters)-1 domainMin: -particleDomain/2  length:particleDomain];
 		yDrifterDim.name = @"y-drifter";
 		
         // For consistency, we order the float dimensions the same as the dynamical variable dimensions.
@@ -311,7 +312,7 @@ int main(int argc, const char * argv[])
 		
 		NSString *filename = shouldApplyStrainField ? [NSString stringWithFormat: @"/InternalWavesLatmixStrained_%lu_%lu_%lu_GM_%.3f.nc", Nx, Ny, Nz_out,energyLevel] : [NSString stringWithFormat: @"/InternalWavesLatmix_%lu_%lu_%lu_GM_%.3f.nc", Nx, Ny, Nz_out,energyLevel];
 //        NSString *outputFile = [[NSSearchPathForDirectoriesInDomains(NSDesktopDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent: filename];
-		NSString *outputFile = [NSString stringWithFormat: @"/Volumes/Data/%@", filename];
+		NSString *outputFile = [NSString stringWithFormat: @"/Volumes/home/jearly/%@", filename];
         GLNetCDFFile *netcdfFile = [[GLNetCDFFile alloc] initWithURL: [NSURL URLWithString: outputFile] forEquation: equation overwriteExisting: YES];
         
         [netcdfFile setGlobalAttribute: @(width) forKey: @"L_domain"];
