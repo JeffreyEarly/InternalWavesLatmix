@@ -25,11 +25,11 @@ int main(int argc, const char * argv[])
         GLFloat minDepth = -100;
         GLFloat maxDepth = 0;
 		
-		BOOL shouldIncludeDiffusiveFloats = NO;
+		BOOL shouldIncludeDiffusiveFloats = YES;
         GLFloat maxWavePeriods = 7.0;
         GLFloat horizontalFloatSpacingInMeters = 125;
         GLFloat sampleTimeInMinutes = 15;
-        GLFloat energyLevel = 1./8.;
+        GLFloat energyLevel = 1./16.;
 		
 		BOOL shouldApplyStrainField = NO;
 		GLFloat sigma = 3.52e-6;
@@ -224,8 +224,10 @@ int main(int argc, const char * argv[])
         GLFloat outputTimeStep = sampleTimeInMinutes*60;
         GLFloat timeStep = cflTimeStep > outputTimeStep ? outputTimeStep : outputTimeStep / ceil(outputTimeStep/cflTimeStep);
 		
+        NSLog(@"cfl time step: %f", cflTimeStep);
+        
 #warning Overriding time step!
-		timeStep = 50;
+		timeStep = 60;
 		
         // Need this for the diffusive drifters
         GLFloat kappa = 5e-6; // m^2/s
@@ -256,17 +258,16 @@ int main(int argc, const char * argv[])
 			GLSimpleInterpolationOperation *interpDrifter = [[GLSimpleInterpolationOperation alloc] initWithFirstOperand: @[uMean, vMean] secondOperand: @[yNew[5], yNew[6]]];
 			
 			if (shouldIncludeDiffusiveFloats) {
-				GLFunction *xStep = [GLFunction functionWithNormallyDistributedValueWithDimensions: floatDimensions forEquation: wave.equation];
-				GLFunction *yStep = [GLFunction functionWithNormallyDistributedValueWithDimensions: floatDimensions forEquation: wave.equation];
-				GLFunction *zStep = [GLFunction functionWithNormallyDistributedValueWithDimensions: floatDimensions forEquation: wave.equation];
-				xStep = [xStep times: @(norm)];
-				yStep = [yStep times: @(norm)];
-				zStep = [zStep times: @(norm)];
+                GLFunction *xStep = [[GLFunction functionWithNormallyDistributedValueWithDimensions: floatDimensions forEquation: wave.equation] times: @(norm)];
+				GLFunction *yStep = [[GLFunction functionWithNormallyDistributedValueWithDimensions: floatDimensions forEquation: wave.equation] times: @(norm)];
+				GLFunction *zStep = [[GLFunction functionWithNormallyDistributedValueWithDimensions: floatDimensions forEquation: wave.equation] times: @(norm)];
+                GLFunction *xStepDrifter = [[GLFunction functionWithNormallyDistributedValueWithDimensions: drifterDimensions forEquation: wave.equation] times: @(norm)];
+                GLFunction *yStepDrifter = [[GLFunction functionWithNormallyDistributedValueWithDimensions: drifterDimensions forEquation: wave.equation] times: @(norm)];
 				
 				NSArray *f3 = @[[interpFixedDepth.result[0] plus: xStep], [interpFixedDepth.result[1] plus: yStep]];
 				[f addObjectsFromArray: f3];
 				
-				NSArray *f4 = @[[interpDrifter.result[0] plus: xStep], [interpDrifter.result[1] plus: yStep]];
+				NSArray *f4 = @[[interpDrifter.result[0] plus: xStepDrifter], [interpDrifter.result[1] plus: yStepDrifter]];
 				[f addObjectsFromArray: f4];
 				
 				GLSimpleInterpolationOperation *interpIsoDiff = [[GLSimpleInterpolationOperation alloc] initWithFirstOperand: @[u2, v2, w2] secondOperand: @[yNew[9], yNew[7], yNew[8]]];
