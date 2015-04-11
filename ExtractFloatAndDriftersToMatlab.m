@@ -1,12 +1,12 @@
 file = '/Users/jearly/Desktop/InternalWavesLatmix_128_128_50_GM_0.013.nc';
 file = '/Volumes/Data/InternalWavesLatmix_256_64_80_GM_0.125.nc';
-file = '/Volumes/Data/InternalWavesLatmix_256_64_80_GM_0.008.nc';
 % file = '/Volumes/jearly/Desktop/InternalWavesLatmix_256_256_50_GM_0.062.nc';
 % file = '/Volumes/home/jearly/InternalWavesLatmix_256_256_50_GM_0.062.nc';
 file = '/Volumes/home/jearly/InternalWavesLatmixStrained_256_64_80_GM_0.016.nc';
 file = '/Volumes/home/jearly/InternalWavesLatmix_256_64_80_GM_0.016.nc';
+file = '/Volumes/Data/InternalWavesLatmixStrained_128_128_50_GM_0.031.nc';
 FloatFolder = '/Users/jearly/Desktop/InternalWavesLatmix_128_128_50_GM_0.013';
-FloatFolder = '/Users/jearly/Documents/LatMix/model/Rectangle_64GM';
+FloatFolder = '/Users/jearly/Documents/LatMix/model/Square_32GM_Strained';
 % FloatFolder = '/Users/jearly/Documents/LatMix/model/sixteenthGM';
 % FloatFolder = '/Users/jearly/Documents/LatMix/model/sixteenthGM_strained';
 %FloatFolder = '/Users/jearly/Documents/LatMix/model/thirtysecondGM';

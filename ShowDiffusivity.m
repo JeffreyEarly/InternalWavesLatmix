@@ -1,4 +1,5 @@
 file = '/Volumes/Data/InternalWavesLatmixStrained_128_128_50_GM_0.031.nc';
+file = '/Volumes/Data/InternalWavesLatmixStrained_128_128_80_GM_0.062.nc';
 
 addpath('/Users/jearly/Documents/LatMix/drifters/support')
 
@@ -54,8 +55,6 @@ kappa_fit = 0.5*p(1)/mu(2);
 fprintf('diffusive linear fit: kappa = %f\n', kappa_fit)
 figure, plot(t, D2)
 
-return
-
 %save(sprintf('%s/isopycnal_floats.mat',FloatFolder),'lat0','t','x','y','z')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -92,19 +91,38 @@ xp=double(ncread(file, 'x-position-fixed-depth',[1 1 1 1], [Inf Inf Inf length(t
 yp=double(ncread(file, 'y-position-fixed-depth',[1 1 1 1], [Inf Inf Inf length(t)], [1 1 1 1]));
 zp=double(ncread(file, 'z-position-fixed-depth',[1 1 1 1], [Inf Inf Inf length(t)], [1 1 1 1]));
 
-x = zeros(length(t),length(xIdx));
-y = zeros(length(t),length(xIdx));
-z = zeros(length(t),length(xIdx));
+zIdx = zeros(size(zp));
+zIdx(:,:,2,:)=2;
 
-for i=1:length(xIdx)
-   x(:,i) = xp(xIdx(i),yIdx(i),zIdx(i),:);
-   y(:,i) = yp(xIdx(i),yIdx(i),zIdx(i),:);
-   z(:,i) = zp(xIdx(i),yIdx(i),zIdx(i),:);
-end
+x = reshape(xp,[],length(t));
+y = reshape(yp,[],length(t));
+z = reshape(zp,[],length(t));
+zIdx = reshape(zIdx,[],length(t));
 
-subplot(2,2,3)
+badDrifters = zeros(size(z));
+badDrifters(find(z<-50))=1;
+badDrifters = sum(badDrifters,2);
+
+indices = find( abs(x(:,1)) < BoxSize &  abs(y(:,1)) < BoxSize & zIdx(:,1) == 2 & ~badDrifters);
+
+x = (x(indices,:))';
+y = (y(indices,:))';
+z = (z(indices,:))';
+
+figure
+%subplot(2,2,1)
 plot(x,y)
-save(sprintf('%s/fixed_depth_floats.mat',FloatFolder),'lat0','t','x','y','z')
+figure
+plot(x,z)
+figure
+scatter(x(1,:),z(1,:))
+
+[minD, maxD, theta] = SecondMomentMatrix( x, y, 'eigen' );
+D2 = (minD+maxD)/2;
+[p,S,mu]=polyfit(t,D2,1);
+kappa_fit = 0.5*p(1)/mu(2);
+fprintf('diffusive linear fit: kappa = %f\n', kappa_fit)
+figure, plot(t, D2)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -115,14 +133,21 @@ save(sprintf('%s/fixed_depth_floats.mat',FloatFolder),'lat0','t','x','y','z')
 xp=double(ncread(file, 'x-position-drifter',[1 1 1], [Inf Inf length(t)], [1 1 1]));
 yp=double(ncread(file, 'y-position-drifter',[1 1 1], [Inf Inf length(t)], [1 1 1]));
 
-x = zeros(length(t),length(xIdx));
-y = zeros(length(t),length(xIdx));
+x = reshape(xp,[],length(t));
+y = reshape(yp,[],length(t));
 
-for i=1:length(xIdx)
-   x(:,i) = xp(xIdx(i),yIdx(i),:);
-   y(:,i) = yp(xIdx(i),yIdx(i),:);
-end
+indices = find( abs(x(:,1)) < BoxSize &  abs(y(:,1)) < BoxSize );
 
-subplot(2,2,4)
+x = (x(indices,:))';
+y = (y(indices,:))';
+
+figure
+%subplot(2,2,1)
 plot(x,y)
-save(sprintf('%s/drifters.mat',FloatFolder),'lat0','t','x','y')
+
+[minD, maxD, theta] = SecondMomentMatrix( x, y, 'eigen' );
+D2 = (minD+maxD)/2;
+[p,S,mu]=polyfit(t,D2,1);
+kappa_fit = 0.5*p(1)/mu(2);
+fprintf('diffusive linear fit: kappa = %f\n', kappa_fit)
+figure, plot(t, D2)

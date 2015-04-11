@@ -17,21 +17,21 @@ int main(int argc, const char * argv[])
         GLFloat latitude = 31;
         GLFloat width = 15e3;
         GLFloat height = 15e3;
-        NSUInteger Nx = 256;
-        NSUInteger Ny = 256;
+        NSUInteger Nx = 128;
+        NSUInteger Ny = 128;
         NSUInteger Nz_in = 512; // Number of grid points upon which to project the input profile (512 rec.)
         
-        NSUInteger Nz_out = 80; // Number of grid points and range for the output
-        GLFloat minDepth = -100;
+        NSUInteger Nz_out = 50; // Number of grid points and range for the output
+        GLFloat minDepth = -60;
         GLFloat maxDepth = 0;
 		
 		BOOL shouldIncludeDiffusiveFloats = YES;
         GLFloat maxWavePeriods = 7.0;
         GLFloat horizontalFloatSpacingInMeters = 125;
         GLFloat sampleTimeInMinutes = 15;
-        GLFloat energyLevel = 1./16.;
+        GLFloat energyLevel = 1./32.;
 		
-		BOOL shouldApplyStrainField = NO;
+		BOOL shouldApplyStrainField = YES;
 		GLFloat sigma = 3.52e-6;
 		GLFloat theta = -32.7;
 		GLFloat sigma_n = sigma*cos(2*theta*M_PI/180.);
@@ -120,6 +120,8 @@ int main(int argc, const char * argv[])
         }
         
         [wave createGarrettMunkSpectrumWithEnergy: energyLevel];
+		wave.w_minus = [wave.w_minus setValue: 0 atIndices: @":,0,0"];
+		wave.w_plus = [wave.w_plus setValue: 0 atIndices: @":,0,0"];
         
         // Create the time dimension
         GLFloat maxTime = maxWavePeriods*2*M_PI/f0;
@@ -149,12 +151,12 @@ int main(int argc, const char * argv[])
         };
 		
 		
-		NSArray *(^positionToUV) (GLFunction *, GLFunction *) = ^(GLFunction *x, GLFunction *y) {
-			GLFunction *u = [[x times: @(sigma_n/2)] plus: [y times: @(sigma_s/2)]];
-			GLFunction *v = [[x times: @(sigma_s/2)] minus: [y times: @(sigma_n/2)]];
-			return @[u,v];
-		};
-        
+//		NSArray *(^positionToUV) (GLFunction *, GLFunction *) = ^(GLFunction *x, GLFunction *y) {
+//			GLFunction *u = [[x times: @(sigma_n/2)] plus: [y times: @(sigma_s/2)]];
+//			GLFunction *v = [[x times: @(sigma_s/2)] minus: [y times: @(sigma_n/2)]];
+//			return @[u,v];
+//		};
+		
         GLScalar *t = [GLScalar scalarWithValue: 0.0*2*M_PI/f0 forEquation: equation];
         NSArray *uv = timeToUV(t);
         GLFunction *u = uv[0];
@@ -227,7 +229,7 @@ int main(int argc, const char * argv[])
         NSLog(@"cfl time step: %f", cflTimeStep);
         
 #warning Overriding time step!
-		timeStep = 60;
+		timeStep = 90;
 		
         // Need this for the diffusive drifters
         GLFloat kappa = 5e-6; // m^2/s
@@ -276,20 +278,26 @@ int main(int argc, const char * argv[])
 			} else {
 				[f addObjectsFromArray: interpFixedDepth.result];
 				[f addObjectsFromArray: interpDrifter.result];
-				
-				if (shouldApplyStrainField) {
-					GLFunction *u_strain = [[yNew[0] times: @(sigma_n/2)] plus: [yNew[1] times: @(sigma_s/2)]];
-					GLFunction *v_strain = [[yNew[0] times: @(sigma_s/2)] minus: [yNew[1] times: @(sigma_n/2)]];
-					f[0] = [f[0] plus: u_strain];
-					f[1] = [f[1] plus: v_strain];
-					u_strain = [[yNew[3] times: @(sigma_n/2)] plus: [yNew[4] times: @(sigma_s/2)]];
-					v_strain = [[yNew[3] times: @(sigma_s/2)] minus: [yNew[4] times: @(sigma_n/2)]];
-					f[3] = [f[3] plus: u_strain];
-					f[4] = [f[4] plus: v_strain];
-					u_strain = [[yNew[5] times: @(sigma_n/2)] plus: [yNew[6] times: @(sigma_s/2)]];
-					v_strain = [[yNew[5] times: @(sigma_s/2)] minus: [yNew[6] times: @(sigma_n/2)]];
-					f[5] = [f[5] plus: u_strain];
-					f[6] = [f[6] plus: v_strain];
+			}
+			
+			if (shouldApplyStrainField) {
+				GLFunction *u_strain = [[yNew[0] times: @(sigma_n/2)] plus: [yNew[1] times: @(sigma_s/2)]];
+				GLFunction *v_strain = [[yNew[0] times: @(sigma_s/2)] minus: [yNew[1] times: @(sigma_n/2)]];
+				f[0] = [f[0] plus: u_strain];
+				f[1] = [f[1] plus: v_strain];
+				u_strain = [[yNew[3] times: @(sigma_n/2)] plus: [yNew[4] times: @(sigma_s/2)]];
+				v_strain = [[yNew[3] times: @(sigma_s/2)] minus: [yNew[4] times: @(sigma_n/2)]];
+				f[3] = [f[3] plus: u_strain];
+				f[4] = [f[4] plus: v_strain];
+				u_strain = [[yNew[5] times: @(sigma_n/2)] plus: [yNew[6] times: @(sigma_s/2)]];
+				v_strain = [[yNew[5] times: @(sigma_s/2)] minus: [yNew[6] times: @(sigma_n/2)]];
+				f[5] = [f[5] plus: u_strain];
+				f[6] = [f[6] plus: v_strain];
+				if (shouldIncludeDiffusiveFloats) {
+					u_strain = [[yNew[7] times: @(sigma_n/2)] plus: [yNew[8] times: @(sigma_s/2)]];
+					v_strain = [[yNew[7] times: @(sigma_s/2)] minus: [yNew[8] times: @(sigma_n/2)]];
+					f[7] = [f[7] plus: u_strain];
+					f[8] = [f[8] plus: v_strain];
 				}
 			}
 			
@@ -314,7 +322,7 @@ int main(int argc, const char * argv[])
 		
 		NSString *filename = shouldApplyStrainField ? [NSString stringWithFormat: @"/InternalWavesLatmixStrained_%lu_%lu_%lu_GM_%.3f.nc", Nx, Ny, Nz_out,energyLevel] : [NSString stringWithFormat: @"/InternalWavesLatmix_%lu_%lu_%lu_GM_%.3f.nc", Nx, Ny, Nz_out,energyLevel];
 //        NSString *outputFile = [[NSSearchPathForDirectoriesInDomains(NSDesktopDirectory, NSUserDomainMask, YES) objectAtIndex:0] stringByAppendingPathComponent: filename];
-		NSString *outputFile = [NSString stringWithFormat: @"/Volumes/home/jearly/%@", filename];
+		NSString *outputFile = [NSString stringWithFormat: @"/Volumes/Data/%@", filename];
         GLNetCDFFile *netcdfFile = [[GLNetCDFFile alloc] initWithURL: [NSURL URLWithString: outputFile] forEquation: equation overwriteExisting: YES];
         
         [netcdfFile setGlobalAttribute: @(width) forKey: @"L_domain"];
