@@ -151,10 +151,10 @@ int main(int argc, const char * argv[])
         };
 		
 		
-//		NSArray *(^positionToUV) (GLFunction *, GLFunction *) = ^(GLFunction *x, GLFunction *y) {
-//			GLFunction *u = [[x times: @(sigma_n/2)] plus: [y times: @(sigma_s/2)]];
-//			GLFunction *v = [[x times: @(sigma_s/2)] minus: [y times: @(sigma_n/2)]];
-//			return @[u,v];
+//		addUV = ^( GLFunction *xpos, GLFunction *ypos, GLFunction *u,GLFunction *v ) {
+//			GLFunction *u2 = [[xpos times: @(sigma_n/2.)] plus: [ypos times: @((sigma_s-zeta)/2.)]];
+//			GLFunction *v2 = [[xpos times: @((sigma_s + zeta)/2.)] plus: [ypos times: @(-sigma_n/2.)]];
+//			return @[[u plus: u2],[v plus: v2]];
 //		};
 		
         GLScalar *t = [GLScalar scalarWithValue: 0.0*2*M_PI/f0 forEquation: equation];
