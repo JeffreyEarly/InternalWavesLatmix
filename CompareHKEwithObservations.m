@@ -3,7 +3,11 @@ N_50 = 2*pi*1.7e-3; % radians per second
 
 % Model
 file = '/Volumes/jearly/Desktop/InternalWavesLatmix_256_256_50_GM_0.042.nc';
-file = '/Volumes/home/jearly/InternalWavesLatmix_256_256_50_GM_0.062.nc';
+file = '/Volumes/home/jearly/InternalWavesLatmix_256_64_80_GM_0.016.nc';
+file = '/Volumes/Data/InternalWavesLatmix_128_128_80_GM_0.062.nc';
+file = '/Volumes/Data/InternalWavesLatmix_128_128_50_GM_0.031_good.nc';
+file = '/Volumes/home/jearly/InternalWavesLatmix_128_128_50_GM_0.016.nc';
+% file = '/Volumes/Data/InternalWavesLatmix_256_64_80_GM_0.008.nc';
 % file = '/Volumes/Data/InternalWavesLatmix_256_256_50_GM_0.062.nc';
 % file = '/Volumes/Data/InternalWaveSimulations/InternalWavesGMSpectrumExponentialStratification.nc';
 N2 = double(ncread(file, 'N2'));
@@ -19,7 +23,7 @@ depth = -50;
 [depth_index] = find(z >= depth, 1, 'first');
 
 
-maxTime = 34*3600;
+maxTime = 100*3600;
 t_index = find(t <= maxTime, 1, 'last');
 
 u3d = double(squeeze(ncread(file, 'u', [1 1 depth_index 1], [length(y)/xStride length(x)/xStride 1 t_index], [xStride xStride 1 1])));

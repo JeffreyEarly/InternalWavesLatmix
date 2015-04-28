@@ -1,12 +1,5 @@
-file = '/Users/jearly/Desktop/InternalWavesLatmix_128_128_50_GM_0.013.nc';
-file = '/Volumes/Data/InternalWavesLatmixStrained_256_256_50_GM_0.062.nc';
-% file = '/Volumes/jearly/Desktop/InternalWavesLatmix_256_256_50_GM_0.062.nc';
-% file = '/Volumes/home/jearly/InternalWavesLatmix_256_256_50_GM_0.062.nc';
-FloatFolder = '/Users/jearly/Desktop/InternalWavesLatmix_128_128_50_GM_0.013';
-FloatFolder = '/Users/jearly/Documents/LatMix/model/eighthGM';
-FloatFolder = '/Users/jearly/Documents/LatMix/model/sixteenthGM';
-FloatFolder = '/Users/jearly/Documents/LatMix/model/sixteenthGM_strained';
-%FloatFolder = '/Users/jearly/Documents/LatMix/model/thirtysecondGM';
+file = '/Volumes/home/jearly/InternalWavesLatmixStrained_256_256_80_GM_0.031.nc';
+FloatFolder = '/Users/jearly/Documents/LatMix/model/Square_32GM_Strained_HighResolution';
 
 if exist(FloatFolder,'dir') == 0
 	mkdir(FloatFolder);
@@ -23,9 +16,12 @@ xIdx = [31 31 29 30 31 32 33 31 31];
 yIdx = [29 30 31 31 31 31 31 32 33];
 zIdx = [2 2 2 2 2 2 2 2 2];
 
-xIdx = 2*[31 31 29 30 31 32 33 31 31];
-yIdx = 2*[29 30 31 31 31 31 31 32 33];
+xIdx = 2*[31 31 29 30 31 32 33 31 31]-30;
+yIdx = 2*[29 30 31 31 31 31 31 32 33]-30;
 zIdx = [2 2 2 2 2 2 2 2 2];
+
+xIdx = 4*[3 3 1 2 3 4 5 3 3]; 
+yIdx = 4*[1 2 3 3 3 3 3 4 5]; 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -58,23 +54,23 @@ save(sprintf('%s/isopycnal_floats.mat',FloatFolder),'lat0','t','x','y','z')
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% xp=double(ncread(file, 'x-position-diffusive',[1 1 1 1], [Inf Inf Inf length(t)], [1 1 1 1]));
-% yp=double(ncread(file, 'y-position-diffusive',[1 1 1 1], [Inf Inf Inf length(t)], [1 1 1 1]));
-% zp=double(ncread(file, 'z-position-diffusive',[1 1 1 1], [Inf Inf Inf length(t)], [1 1 1 1]));
-% 
-% x = zeros(length(t),length(xIdx));
-% y = zeros(length(t),length(xIdx));
-% z = zeros(length(t),length(xIdx));
-% 
-% for i=1:length(xIdx)
-%    x(:,i) = xp(xIdx(i),yIdx(i),zIdx(i),:);
-%    y(:,i) = yp(xIdx(i),yIdx(i),zIdx(i),:);
-%    z(:,i) = zp(xIdx(i),yIdx(i),zIdx(i),:);
-% end
-% 
-% subplot(2,2,2)
-% plot(x,y)
-% save(sprintf('%s/isopycnal_diffusive_floats.mat',FloatFolder),'lat0','t','x','y','z')
+xp=double(ncread(file, 'x-position-diffusive',[1 1 1 1], [Inf Inf Inf length(t)], [1 1 1 1]));
+yp=double(ncread(file, 'y-position-diffusive',[1 1 1 1], [Inf Inf Inf length(t)], [1 1 1 1]));
+zp=double(ncread(file, 'z-position-diffusive',[1 1 1 1], [Inf Inf Inf length(t)], [1 1 1 1]));
+
+x = zeros(length(t),length(xIdx));
+y = zeros(length(t),length(xIdx));
+z = zeros(length(t),length(xIdx));
+
+for i=1:length(xIdx)
+   x(:,i) = xp(xIdx(i),yIdx(i),zIdx(i),:);
+   y(:,i) = yp(xIdx(i),yIdx(i),zIdx(i),:);
+   z(:,i) = zp(xIdx(i),yIdx(i),zIdx(i),:);
+end
+
+subplot(2,2,2)
+plot(x,y)
+save(sprintf('%s/isopycnal_diffusive_floats.mat',FloatFolder),'lat0','t','x','y','z')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %

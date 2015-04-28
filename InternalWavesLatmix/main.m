@@ -13,24 +13,25 @@
 int main(int argc, const char * argv[])
 {
     @autoreleasepool {
+        // 60km x 15km box, set energyLevel to 1/64
         GLFloat latitude = 31;
-        GLFloat width = 60e3;
+        GLFloat width = 15e3;
         GLFloat height = 15e3;
         NSUInteger Nx = 512;
         NSUInteger Ny = 128;
         NSUInteger Nz_in = 512; // Number of grid points upon which to project the input profile (512 rec.)
         
-        NSUInteger Nz_out = 80; // Number of grid points and range for the output
-        GLFloat minDepth = -100;
+        NSUInteger Nz_out = 50; // Number of grid points and range for the output
+        GLFloat minDepth = -60;
         GLFloat maxDepth = 0;
 		
-		BOOL shouldIncludeDiffusiveFloats = NO;
-        GLFloat maxWavePeriods = 10.0;
+		BOOL shouldIncludeDiffusiveFloats = YES;
+        GLFloat maxWavePeriods = 7.0;
         GLFloat horizontalFloatSpacingInMeters = 125;
         GLFloat sampleTimeInMinutes = 15;
-        GLFloat energyLevel = 1./8.;
+        GLFloat energyLevel = 1./32.;
 		
-		BOOL shouldApplyStrainField = NO;
+		BOOL shouldApplyStrainField = YES;
 		GLFloat sigma = 3.52e-6;
 		GLFloat theta = -32.7;
 		GLFloat sigma_n = sigma*cos(2*theta*M_PI/180.);
@@ -119,6 +120,8 @@ int main(int argc, const char * argv[])
         }
         
         [wave createGarrettMunkSpectrumWithEnergy: energyLevel];
+		wave.w_minus = [wave.w_minus setValue: 0 atIndices: @":,0,0"];
+		wave.w_plus = [wave.w_plus setValue: 0 atIndices: @":,0,0"];
         
         // Create the time dimension
         GLFloat maxTime = maxWavePeriods*2*M_PI/f0;
@@ -148,12 +151,12 @@ int main(int argc, const char * argv[])
         };
 		
 		
-		NSArray *(^positionToUV) (GLFunction *, GLFunction *) = ^(GLFunction *x, GLFunction *y) {
-			GLFunction *u = [[x times: @(sigma_n/2)] plus: [y times: @(sigma_s/2)]];
-			GLFunction *v = [[x times: @(sigma_s/2)] minus: [y times: @(sigma_n/2)]];
-			return @[u,v];
-		};
-        
+//		addUV = ^( GLFunction *xpos, GLFunction *ypos, GLFunction *u,GLFunction *v ) {
+//			GLFunction *u2 = [[xpos times: @(sigma_n/2.)] plus: [ypos times: @((sigma_s-zeta)/2.)]];
+//			GLFunction *v2 = [[xpos times: @((sigma_s + zeta)/2.)] plus: [ypos times: @(-sigma_n/2.)]];
+//			return @[[u plus: u2],[v plus: v2]];
+//		};
+		
         GLScalar *t = [GLScalar scalarWithValue: 0.0*2*M_PI/f0 forEquation: equation];
         NSArray *uv = timeToUV(t);
         GLFunction *u = uv[0];
@@ -169,16 +172,17 @@ int main(int argc, const char * argv[])
         /*		Let's also plop a float at a bunch of grid points.                                      */
         /************************************************************************************************/
         
-        GLDimension *xFloatDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints: ceil(width/horizontalFloatSpacingInMeters) domainMin: -width/2 length:width];
+        GLFloat particleDomain = 7.5e3;
+        GLDimension *xFloatDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints: ceil(particleDomain/horizontalFloatSpacingInMeters) domainMin: -particleDomain/2 length:particleDomain];
         xFloatDim.name = @"x-float";
-        GLDimension *yFloatDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints:ceil(height/horizontalFloatSpacingInMeters)-1 domainMin: -height/2  length:height];
+        GLDimension *yFloatDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints:ceil(particleDomain/horizontalFloatSpacingInMeters)-1 domainMin: -particleDomain/2  length:particleDomain];
         yFloatDim.name = @"y-float";
         GLDimension *zFloatDim = [[GLDimension alloc] initWithPoints: @[ @(-38), @(-31.5), @(-25)]];
         zFloatDim.name = @"z-float";
 		
-		GLDimension *xDrifterDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints: ceil(width/horizontalFloatSpacingInMeters) domainMin: -width/2 length:width];
+		GLDimension *xDrifterDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints: ceil(particleDomain/horizontalFloatSpacingInMeters) domainMin: -particleDomain/2 length:particleDomain];
 		xDrifterDim.name = @"x-drifter";
-		GLDimension *yDrifterDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints:ceil(height/horizontalFloatSpacingInMeters)-1 domainMin: -height/2  length:height];
+		GLDimension *yDrifterDim = [[GLDimension alloc] initDimensionWithGrid: kGLPeriodicGrid nPoints:ceil(particleDomain/horizontalFloatSpacingInMeters)-1 domainMin: -particleDomain/2  length:particleDomain];
 		yDrifterDim.name = @"y-drifter";
 		
         // For consistency, we order the float dimensions the same as the dynamical variable dimensions.
@@ -222,8 +226,10 @@ int main(int argc, const char * argv[])
         GLFloat outputTimeStep = sampleTimeInMinutes*60;
         GLFloat timeStep = cflTimeStep > outputTimeStep ? outputTimeStep : outputTimeStep / ceil(outputTimeStep/cflTimeStep);
 		
+        NSLog(@"cfl time step: %f", cflTimeStep);
+        
 #warning Overriding time step!
-		timeStep = 50;
+		timeStep = 90;
 		
         // Need this for the diffusive drifters
         GLFloat kappa = 5e-6; // m^2/s
@@ -254,17 +260,16 @@ int main(int argc, const char * argv[])
 			GLSimpleInterpolationOperation *interpDrifter = [[GLSimpleInterpolationOperation alloc] initWithFirstOperand: @[uMean, vMean] secondOperand: @[yNew[5], yNew[6]]];
 			
 			if (shouldIncludeDiffusiveFloats) {
-				GLFunction *xStep = [GLFunction functionWithNormallyDistributedValueWithDimensions: floatDimensions forEquation: wave.equation];
-				GLFunction *yStep = [GLFunction functionWithNormallyDistributedValueWithDimensions: floatDimensions forEquation: wave.equation];
-				GLFunction *zStep = [GLFunction functionWithNormallyDistributedValueWithDimensions: floatDimensions forEquation: wave.equation];
-				xStep = [xStep times: @(norm)];
-				yStep = [yStep times: @(norm)];
-				zStep = [zStep times: @(norm)];
+                GLFunction *xStep = [[GLFunction functionWithNormallyDistributedValueWithDimensions: floatDimensions forEquation: wave.equation] times: @(norm)];
+				GLFunction *yStep = [[GLFunction functionWithNormallyDistributedValueWithDimensions: floatDimensions forEquation: wave.equation] times: @(norm)];
+				GLFunction *zStep = [[GLFunction functionWithNormallyDistributedValueWithDimensions: floatDimensions forEquation: wave.equation] times: @(norm)];
+                GLFunction *xStepDrifter = [[GLFunction functionWithNormallyDistributedValueWithDimensions: drifterDimensions forEquation: wave.equation] times: @(norm)];
+                GLFunction *yStepDrifter = [[GLFunction functionWithNormallyDistributedValueWithDimensions: drifterDimensions forEquation: wave.equation] times: @(norm)];
 				
 				NSArray *f3 = @[[interpFixedDepth.result[0] plus: xStep], [interpFixedDepth.result[1] plus: yStep]];
 				[f addObjectsFromArray: f3];
 				
-				NSArray *f4 = @[[interpDrifter.result[0] plus: xStep], [interpDrifter.result[1] plus: yStep]];
+				NSArray *f4 = @[[interpDrifter.result[0] plus: xStepDrifter], [interpDrifter.result[1] plus: yStepDrifter]];
 				[f addObjectsFromArray: f4];
 				
 				GLSimpleInterpolationOperation *interpIsoDiff = [[GLSimpleInterpolationOperation alloc] initWithFirstOperand: @[u2, v2, w2] secondOperand: @[yNew[9], yNew[7], yNew[8]]];
@@ -273,20 +278,26 @@ int main(int argc, const char * argv[])
 			} else {
 				[f addObjectsFromArray: interpFixedDepth.result];
 				[f addObjectsFromArray: interpDrifter.result];
-				
-				if (shouldApplyStrainField) {
-					GLFunction *u_strain = [[yNew[0] times: @(sigma_n/2)] plus: [yNew[1] times: @(sigma_s/2)]];
-					GLFunction *v_strain = [[yNew[0] times: @(sigma_s/2)] minus: [yNew[1] times: @(sigma_n/2)]];
-					f[0] = [f[0] plus: u_strain];
-					f[1] = [f[1] plus: v_strain];
-					u_strain = [[yNew[3] times: @(sigma_n/2)] plus: [yNew[4] times: @(sigma_s/2)]];
-					v_strain = [[yNew[3] times: @(sigma_s/2)] minus: [yNew[4] times: @(sigma_n/2)]];
-					f[3] = [f[3] plus: u_strain];
-					f[4] = [f[4] plus: v_strain];
-					u_strain = [[yNew[5] times: @(sigma_n/2)] plus: [yNew[6] times: @(sigma_s/2)]];
-					v_strain = [[yNew[5] times: @(sigma_s/2)] minus: [yNew[6] times: @(sigma_n/2)]];
-					f[5] = [f[5] plus: u_strain];
-					f[6] = [f[6] plus: v_strain];
+			}
+			
+			if (shouldApplyStrainField) {
+				GLFunction *u_strain = [[yNew[0] times: @(sigma_n/2)] plus: [yNew[1] times: @(sigma_s/2)]];
+				GLFunction *v_strain = [[yNew[0] times: @(sigma_s/2)] minus: [yNew[1] times: @(sigma_n/2)]];
+				f[0] = [f[0] plus: u_strain];
+				f[1] = [f[1] plus: v_strain];
+				u_strain = [[yNew[3] times: @(sigma_n/2)] plus: [yNew[4] times: @(sigma_s/2)]];
+				v_strain = [[yNew[3] times: @(sigma_s/2)] minus: [yNew[4] times: @(sigma_n/2)]];
+				f[3] = [f[3] plus: u_strain];
+				f[4] = [f[4] plus: v_strain];
+				u_strain = [[yNew[5] times: @(sigma_n/2)] plus: [yNew[6] times: @(sigma_s/2)]];
+				v_strain = [[yNew[5] times: @(sigma_s/2)] minus: [yNew[6] times: @(sigma_n/2)]];
+				f[5] = [f[5] plus: u_strain];
+				f[6] = [f[6] plus: v_strain];
+				if (shouldIncludeDiffusiveFloats) {
+					u_strain = [[yNew[7] times: @(sigma_n/2)] plus: [yNew[8] times: @(sigma_s/2)]];
+					v_strain = [[yNew[7] times: @(sigma_s/2)] minus: [yNew[8] times: @(sigma_n/2)]];
+					f[7] = [f[7] plus: u_strain];
+					f[8] = [f[8] plus: v_strain];
 				}
 			}
 			
