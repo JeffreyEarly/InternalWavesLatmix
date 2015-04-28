@@ -16,8 +16,8 @@ int main(int argc, const char * argv[])
         GLFloat latitude = 31;
         GLFloat width = 60e3;
         GLFloat height = 15e3;
-        NSUInteger Nx = 256;
-        NSUInteger Ny = 64;
+        NSUInteger Nx = 512;
+        NSUInteger Ny = 128;
         NSUInteger Nz_in = 512; // Number of grid points upon which to project the input profile (512 rec.)
         
         NSUInteger Nz_out = 80; // Number of grid points and range for the output

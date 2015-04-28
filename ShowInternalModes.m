@@ -3,8 +3,8 @@ z = ncread(file,'z');
 rho = ncread(file,'rho');
 
 latitude = 31;
-width = 10e3;
-height = 10e3;
+width = 15e3;
+height = 15e3;
 Nx = 256;
 Nz = 512;
 L_z = z(end)-z(1);
