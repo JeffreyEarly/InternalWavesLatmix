@@ -1,0 +1,37 @@
+{
+  "DVTSourceControlWorkspaceBlueprintPrimaryRemoteRepositoryKey" : "F6D9C42575086B6F9A9B7CE086FCD3F04C457FBC",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyRepositoryLocationsKey" : {
+
+  },
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyStatesKey" : {
+    "F6D9C42575086B6F9A9B7CE086FCD3F04C457FBC" : 0,
+    "A667B81420130A7CF8C16D7DC1622CE51619361A" : 0,
+    "13B78EA659372F5FA2535D85FF02546CFE6B6BF0" : 0
+  },
+  "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "FC75995F-0214-415C-B58F-B2013F719846",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
+    "F6D9C42575086B6F9A9B7CE086FCD3F04C457FBC" : "InternalWavesLatmix\/",
+    "A667B81420130A7CF8C16D7DC1622CE51619361A" : "GLOceanKit\/",
+    "13B78EA659372F5FA2535D85FF02546CFE6B6BF0" : "GLNumericalModelingKit\/"
+  },
+  "DVTSourceControlWorkspaceBlueprintNameKey" : "InternalWavesLatmix",
+  "DVTSourceControlWorkspaceBlueprintVersion" : 204,
+  "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "InternalWavesLatmix.xcworkspace",
+  "DVTSourceControlWorkspaceBlueprintRemoteRepositoriesKey" : [
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/JeffreyEarly\/GLNumericalModelingKit.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "13B78EA659372F5FA2535D85FF02546CFE6B6BF0"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/JeffreyEarly\/GLOceanKit.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "A667B81420130A7CF8C16D7DC1622CE51619361A"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/JeffreyEarly\/InternalWavesLatmix.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "F6D9C42575086B6F9A9B7CE086FCD3F04C457FBC"
+    }
+  ]
+}
