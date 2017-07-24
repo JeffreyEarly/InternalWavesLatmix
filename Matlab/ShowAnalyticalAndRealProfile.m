@@ -50,6 +50,8 @@ if 0
     
     N2 = @(z) (z>=z_p).*N2_surface(z) + (z<z_p).*N2_deep(z) + N2_p(z);
 else
+    % Notes for this profile are here:
+    % /Users/jearly/Dropbox/Documents/Notes/latmix-glider-profiles/ADifferentAnalyticalProfile/ADifferentAnalyticalProfile.tex
     L_s = 8;
     L_d = 100;
     
@@ -73,22 +75,61 @@ else
 end
 
 
-figure
-subplot(1,2,1)
-plot(N2Latmix,zLatmix), hold on
-plot(N2(z),z)
-% xlog
-subplot(1,2,2)
-plot(rhoLatmix,zLatmix), hold on
-plot(rho(z),z)
 
 
 im = InternalModes(rho,[-D 0],z,latitude,  'method', 'wkbSpectral', 'nEVP', 513); % adding extra points to just confirm all is well converged.
 
-% 'nEVP', 1024,
 figure
+subplot(1,2,1)
 plot(N2Latmix,zLatmix), hold on
+plot(N2(z),z)
 plot(im.N2,z)
+legend('latmix','analytic', 'computed')
 xlog
+subplot(1,2,2)
+plot(rhoLatmix,zLatmix), hold on
+plot(rho(z),z)
 
 im.ShowLowestModesAtWavenumber(0.0)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Now let's create a stretched coordinate and see how well it does
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Nz = 64;
+maxDepth = -50;
+z = linspace(0,maxDepth,1e5);
+
+N_scaled = sqrt(N2(z)/N2(0));
+s = cumtrapz( z, N_scaled );
+sGrid = linspace(min(s), max(s), Nz);
+z_stretched = interp1(s, z, sGrid );
+
+nGrid = 2^14+1; % 2^13 looks fine, but 2^14 looks perfect.
+
+im1024 = InternalModes(rho,[-D 0],z_stretched,latitude,  'method', 'wkbSpectral', 'nEVP', 1024, 'nGrid', nGrid);
+im512 = InternalModes(rho,[-D 0],z_stretched,latitude,  'method', 'wkbSpectral', 'nEVP', 512, 'nGrid', nGrid);
+im256 = InternalModes(rho,[-D 0],z_stretched,latitude,  'method', 'wkbSpectral', 'nEVP', 256, 'nGrid', nGrid);
+im128 = InternalModes(rho,[-D 0],z_stretched,latitude,  'method', 'wkbSpectral', 'nEVP', 128, 'nGrid', nGrid);
+
+% Biggest issue occurs for long wavelength (k=0)...
+k = 0;
+
+[F1024,G1024,h1024] = im1024.ModesAtWavenumber(k);
+[F512,G512,h512] = im512.ModesAtWavenumber(k);
+[F256,G256,h256] = im256.ModesAtWavenumber(k);
+[F128,G128,h128] = im128.ModesAtWavenumber(k);
+
+%...and the lowest mode
+iMode = 1;
+figure
+plot(F1024(:,iMode),z_stretched), hold on
+plot(F512(:,iMode),z_stretched)
+plot(F256(:,iMode),z_stretched)
+plot(F128(:,iMode),z_stretched)
+
+legend('1024','512','256','128')
+
+% Looks like you can get away with 512, although 1024 would be better.
+

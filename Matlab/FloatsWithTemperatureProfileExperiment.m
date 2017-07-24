@@ -14,26 +14,33 @@
 N = 128;
 aspectRatio = 1;
 
-L = 500e3;
+L = 100e3;
 Lx = aspectRatio*L;
 Ly = L;
 Lz = 5000;
 
 Nx = aspectRatio*N;
 Ny = N;
-Nz = N+1; % Must include end point to advect at the surface, so use 2^N + 1
+Nz = 64;
+nModes = 64;
+nEVP = 512;
+nGrid = 2^14+1;
 
 latitude = 31;
-N0 = 5.2e-3; % Choose your stratification
-GMReferenceLevel = 1.0 * Lz/1300;
+GMReferenceLevel = 0.5;
 
 kappa = 5e-6;
 outputInterval = 15*60;
-maxTime = 12.0*86400; %10*outputInterval;
+maxTime = 6.0*86400; %10*outputInterval;
 interpolationMethod = 'spline';
+
 shouldOutputEulerianFields = 1;
+shouldOutputFloats = 0;
+shouldOutputDiffusiveFloats = 0;
+shouldOutputDrifters = 0;
 
 outputfolder = '/Volumes/OceanTransfer';
+outputfolder = '/Users/jearly/Desktop';
 
 precision = 'single';
 
@@ -49,60 +56,79 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
+% Build the Latmix stratification profile
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Notes for this profile are here:
+% /Users/jearly/Dropbox/Documents/Notes/latmix-glider-profiles/ADifferentAnalyticalProfile/ADifferentAnalyticalProfile.tex
+
+rho0 = 1025;
+g = 9.81;
+
+delta_p = 0.9;
+L_s = 8;
+L_d = 100;
+z_p = -17;
+D = Lz; % intended to be 5000m
+
+N0 = 2.8e-3; % Surface
+Nq = 1.4e-2; % Pycnocline portion to exponentials
+Np = 4.7e-2;
+Nd = 1.75e-3;
+
+A = Np*Np - Nq*Nq;
+B = (Nq*Nq - N0*N0)/(1 - exp(-2*z_p^2/L_s^2));
+C = N0*N0-B*exp(-2*z_p^2/L_s);
+E = (Nq*Nq - Nd*Nd)/( 1 - exp(-2*(-D-z_p)^2/L_d^2) );
+F = Nd*Nd - E*exp( -2*(-D-z_p)^2/L_d^2 );
+
+rho_surface = @(z) rho0*(1 - (L_s*B/(2*g)) * sqrt(pi/2) *( erf(sqrt(2)*z_p/L_s) - erf(-sqrt(2)*(z-z_p)/L_s) ) - C*z/g);
+rho_deep = @(z) rho_surface(z_p) - (rho0*L_d*E/(2*g)) * sqrt(pi/2) * (erf(sqrt(2)*(z-z_p)/L_d)) - rho0*F*(z-z_p)/g;
+rho_p = @(z) -(A*rho0*delta_p/g)*(tanh( (z-z_p)/delta_p) - 1);
+rho = @(z) (z>=z_p).*rho_surface(max(z,z_p)) + (z<z_p).*rho_deep(z) + rho_p(z);
+
+N2_surface = @(z) B*exp(-2*(z-z_p).^2/L_s^2) + C;
+N2_deep = @(z) E*exp(-2*(z-z_p).^2/L_d^2) + F;
+N2_p = @(z) A*sech( (z-z_p)/delta_p ).^2;
+N2 = @(z) (z>=z_p).*N2_surface(z) + (z<z_p).*N2_deep(z) + N2_p(z);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Now let's create a stretched coordinate and see how well it does
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+maxDepth = -50;
+z_lin = linspace(0,maxDepth,1e5);
+
+N_scaled = sqrt(N2(z_lin)/N2(0));
+s = cumtrapz( z_lin, N_scaled );
+sGrid = linspace(min(s), max(s), Nz);
+z = interp1(s, z_lin, sGrid );
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
 % Initialize the wave model
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 shouldUseGMSpectrum = 1;
 
-wavemodel = InternalWaveModelConstantStratification([Lx, Ly, Lz], [Nx, Ny, Nz], latitude, N0);
+wavemodel = InternalWaveModelArbitraryStratification([Lx, Ly, Lz], [Nx, Ny], rho, z, latitude, nModes,  'method', 'wkbSpectral', 'nEVP', nEVP, 'nGrid', nGrid);
 
-if shouldUseGMSpectrum == 1
-    wavemodel.FillOutWaveSpectrum();
-    wavemodel.InitializeWithGMSpectrum(GMReferenceLevel,1);
-    wavemodel.ShowDiagnostics();
-    
-%     wavemodel.SetExternalWavesWithFrequencies([],[],[],[],[],'energyDensity');
-%     
-%     Kh = sqrt(wavemodel.K.^2 + wavemodel.L.^2);
-%     k = wavemodel.k;
-%     k_nyquist = max(k);
-%     dk = k(2)-k(1);
-%     k_cutoff = 12*dk;
-%     indices = Kh < k_cutoff; % & Kh ~= 0;
-%     
-%     A_plus = wavemodel.Amp_plus;
-%     A_minus = wavemodel.Amp_minus;
-%     A_plus(indices) = 0;
-%     A_minus(indices) = 0;
-%     
-%     wavemodel.GenerateWavePhases(A_plus,A_minus);
-%     
-%     maxPeriod = 2*pi/min(min(min(abs(wavemodel.Omega(~indices)))));
-%     maxWavelength = 2*pi/min(min(min(Kh(~(Kh < k_cutoff)))));
-%     fprintf('Maximum wave period: T=%.2f minutes, maximum wave length: L=%.2f meters\n', maxPeriod/60, maxWavelength);
-    
-    period = 2*pi/wavemodel.N0;
-    if shouldOutputEulerianFields == 1
-        [u,v] = wavemodel.VelocityFieldAtTime(0.0);
-        U = max(max(max( sqrt(u.*u + v.*v) )));
-    else
-        U = 0.1;
-    end
-    fprintf('Max fluid velocity: %.2f cm/s\n',U*100);
+wavemodel.FillOutWaveSpectrum();
+wavemodel.InitializeWithGMSpectrum(GMReferenceLevel,1);
+wavemodel.ShowDiagnostics();
+
+period = 2*pi/wavemodel.Nmax;
+if shouldOutputEulerianFields == 1
+    [u,v] = wavemodel.VelocityFieldAtTime(0.0);
+    U = max(max(max( sqrt(u.*u + v.*v) )));
 else
-    j0 = 1; % j=1..nModes, where 1 indicates the 1st baroclinic mode
-    U = 0.1; % m/s
-    sign = 1;
-    phi = 0;
-    k0 = 2;
-    l0 = 0;
-    alpha = atan2(l0,k0);
-    k = 2*pi*sqrt(k0^2 + l0^2)/Lx;
-    
-    period = wavemodel.InitializeWithPlaneWave(k0,l0,j0,U,sign);
-    maxTime = period;
+    U = 0.1;
 end
+fprintf('Max fluid velocity: %.2f cm/s\n',U*100);
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -116,7 +142,7 @@ nLevels = 5;
 N = floor(N/3);
 x_float = (0:N-1)*dx;
 y_float = (0:N-1)*dy;
-z_float = (0:nLevels-1)*(-Lz/(2*(nLevels-1)));
+z_float = -30;
 
 % nudge towards the center of the domain. This isn't necessary, but does
 % prevent the spline interpolation from having to worry about the
@@ -130,30 +156,10 @@ y_float = reshape(y_float,[],1);
 z_float = reshape(z_float,[],1);
 nFloats = numel(x_float);
 
-% Now let's place the floats along an isopycnal.
-isopycnalDeviation = wavemodel.ZetaAtTimePosition(0,x_float,y_float,z_float,interpolationMethod);
-z_isopycnal = z_float + isopycnalDeviation;
-
-% Iteratively place floats on the isopycnal surface. Overkill, probably.
-for zLevel = 1:nLevels
-    zLevelIndices = (zLevel-1)*N*N + (1:(N*N));
-    for i=1:15
-        rho = wavemodel.DensityAtTimePosition(0,x_float(zLevelIndices),y_float(zLevelIndices),z_isopycnal(zLevelIndices),interpolationMethod);
-        dRho = rho - mean(rho);
-        dz = dRho * 9.81/(N0*N0*wavemodel.rho0);
-        z_isopycnal(zLevelIndices) = z_isopycnal(zLevelIndices)+dz;
-    end
-    
-    rho = wavemodel.DensityAtTimePosition(0,x_float(zLevelIndices),y_float(zLevelIndices),z_isopycnal(zLevelIndices));
-    dRho = rho - mean(rho);
-    dz = dRho * 9.81/(N0*N0*wavemodel.rho0);
-    fprintf('All floats are within %.2g meters of the isopycnal at z=%.1f meters\n',max(abs(dz)),z_float((zLevel-1)*N*N+1))
-end
-
-ymin = [-Inf -Inf -Lz -Inf -Inf -Lz -Inf -Inf];
-ymax = [Inf Inf 0 Inf Inf 0 Inf Inf];
-kappa_vector = [0 0 0 kappa kappa kappa 0 0];
-p0 = cat(2, x_float, y_float, z_isopycnal, x_float, y_float, z_isopycnal, x_float, y_float);
+ymin = [-Inf -Inf];
+ymax = [Inf Inf];
+kappa_vector = [0 0];
+p0 = cat(2, x_float, y_float);
 
 f = @(t,y) FluxForFloatDiffusiveDrifter(t,y,z_float,wavemodel, interpolationMethod);
 
@@ -188,7 +194,7 @@ end
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-filepath = sprintf('%s/DiffusivityExperiment_%s_%dx%dx%d.nc', outputfolder,datestr(datetime('now'),'yyyy-mm-ddTHHMMSS'),Nx,Ny,Nz);
+filepath = sprintf('%s/FloatsWithTemperatureProfileExperiment_%s_%dx%dx%d.nc', outputfolder,datestr(datetime('now'),'yyyy-mm-ddTHHMMSS'),Nx,Ny,Nz);
 
 % Apple uses 1e9 bytes as 1 GB (not the usual multiples of 2 definition)
 totalFields = 4;
@@ -228,43 +234,23 @@ if shouldOutputEulerianFields == 1
 end
 
 % Define the *float* dimensions
-floatDimID = netcdf.defDim(ncid, 'float_id', nFloats);
-xFloatID = netcdf.defVar(ncid, 'x-position', ncPrecision, [floatDimID,tDimID]);
-yFloatID = netcdf.defVar(ncid, 'y-position', ncPrecision, [floatDimID,tDimID]);
-zFloatID = netcdf.defVar(ncid, 'z-position', ncPrecision, [floatDimID,tDimID]);
-densityFloatID = netcdf.defVar(ncid, 'density', ncPrecision, [floatDimID,tDimID]);
-netcdf.putAtt(ncid,xFloatID, 'units', 'm');
-netcdf.putAtt(ncid,yFloatID, 'units', 'm');
-netcdf.putAtt(ncid,zFloatID, 'units', 'm');
-
-% Define the *float* dimensions
-xDiffusiveFloatID = netcdf.defVar(ncid, 'x-position-diffusive', ncPrecision, [floatDimID,tDimID]);
-yDiffusiveFloatID = netcdf.defVar(ncid, 'y-position-diffusive', ncPrecision, [floatDimID,tDimID]);
-zDiffusiveFloatID = netcdf.defVar(ncid, 'z-position-diffusive', ncPrecision, [floatDimID,tDimID]);
-densityDiffusiveFloatID = netcdf.defVar(ncid, 'density-diffusive', ncPrecision, [floatDimID,tDimID]);
-netcdf.putAtt(ncid,xDiffusiveFloatID, 'units', 'm');
-netcdf.putAtt(ncid,yDiffusiveFloatID, 'units', 'm');
-netcdf.putAtt(ncid,zDiffusiveFloatID, 'units', 'm');
-
-% Define the *float* dimensions
-xDrifterID = netcdf.defVar(ncid, 'x-position-drifter', ncPrecision, [floatDimID,tDimID]);
-yDrifterID = netcdf.defVar(ncid, 'y-position-drifter', ncPrecision, [floatDimID,tDimID]);
-zDrifterID = netcdf.defVar(ncid, 'z-position-drifter', ncPrecision, [floatDimID,tDimID]);
-densityDrifterID = netcdf.defVar(ncid, 'density-drifter', ncPrecision, [floatDimID,tDimID]);
-netcdf.putAtt(ncid,xDrifterID, 'units', 'm');
-netcdf.putAtt(ncid,yDrifterID, 'units', 'm');
-netcdf.putAtt(ncid,zDrifterID, 'units', 'm');
+if shouldOutputDrifters == 1
+    xDrifterID = netcdf.defVar(ncid, 'x-position-drifter', ncPrecision, [floatDimID,tDimID]);
+    yDrifterID = netcdf.defVar(ncid, 'y-position-drifter', ncPrecision, [floatDimID,tDimID]);
+    zDrifterID = netcdf.defVar(ncid, 'z-position-drifter', ncPrecision, [floatDimID,tDimID]);
+    densityDrifterID = netcdf.defVar(ncid, 'density-drifter', ncPrecision, [floatDimID,tDimID]);
+    netcdf.putAtt(ncid,xDrifterID, 'units', 'm');
+    netcdf.putAtt(ncid,yDrifterID, 'units', 'm');
+    netcdf.putAtt(ncid,zDrifterID, 'units', 'm');
+end
 
 % Write some metadata
 netcdf.putAtt(ncid,netcdf.getConstant('NC_GLOBAL'), 'latitude', latitude);
-netcdf.putAtt(ncid,netcdf.getConstant('NC_GLOBAL'), 'N0', N0);
 netcdf.putAtt(ncid,netcdf.getConstant('NC_GLOBAL'), 'GMReferenceLevel', GMReferenceLevel);
 netcdf.putAtt(ncid,netcdf.getConstant('NC_GLOBAL'), 'Model', 'Created from InternalWaveModel.m written by Jeffrey J. Early.');
 netcdf.putAtt(ncid,netcdf.getConstant('NC_GLOBAL'), 'ModelVersion', wavemodel.version);
 netcdf.putAtt(ncid,netcdf.getConstant('NC_GLOBAL'), 'CreationDate', datestr(datetime('now')));
 
-% netcdf.putAtt(ncid,netcdf.getConstant('NC_GLOBAL'), 'max-wavelength-in-spectrum', maxWavelength);
-netcdf.putAtt(ncid,netcdf.getConstant('NC_GLOBAL'), 'nFloatLevels', nLevels);
 netcdf.putAtt(ncid,netcdf.getConstant('NC_GLOBAL'), 'kappa', kappa);
 netcdf.putAtt(ncid,netcdf.getConstant('NC_GLOBAL'), 'interpolation-method', interpolationMethod);
 
@@ -306,22 +292,13 @@ for iTime=1:length(t)
     end
     netcdf.putVar(ncid, setprecision(tVarID), iTime-1, 1, t(iTime));
     
-    p = integrator.StepForwardToTime(t(iTime));
-    netcdf.putVar(ncid, setprecision(xFloatID), [0 iTime-1], [nFloats 1], p(:,1));
-    netcdf.putVar(ncid, setprecision(yFloatID), [0 iTime-1], [nFloats 1], p(:,2));
-    netcdf.putVar(ncid, setprecision(zFloatID), [0 iTime-1], [nFloats 1], p(:,3));
-    netcdf.putVar(ncid, setprecision(densityFloatID), [0 iTime-1], [nFloats 1], wavemodel.DensityAtTimePosition(t(iTime),p(:,1),p(:,2),p(:,3))-wavemodel.rho0);
-
-    netcdf.putVar(ncid, setprecision(xDiffusiveFloatID), [0 iTime-1], [nFloats 1], p(:,4));
-    netcdf.putVar(ncid, setprecision(yDiffusiveFloatID), [0 iTime-1], [nFloats 1], p(:,5));
-    netcdf.putVar(ncid, setprecision(zDiffusiveFloatID), [0 iTime-1], [nFloats 1], p(:,6));
-    netcdf.putVar(ncid, setprecision(densityDiffusiveFloatID), [0 iTime-1], [nFloats 1], wavemodel.DensityAtTimePosition(t(iTime),p(:,4),p(:,5),p(:,6))-wavemodel.rho0);
-
-    netcdf.putVar(ncid, setprecision(xDrifterID), [0 iTime-1], [nFloats 1], p(:,7));
-    netcdf.putVar(ncid, setprecision(yDrifterID), [0 iTime-1], [nFloats 1], p(:,8));
-    netcdf.putVar(ncid, setprecision(zDrifterID), [0 iTime-1], [nFloats 1], z_float);
-    netcdf.putVar(ncid, setprecision(densityDrifterID), [0 iTime-1], [nFloats 1], wavemodel.DensityAtTimePosition(t(iTime),p(:,7),p(:,8),z_float)-wavemodel.rho0);
-
+    if shouldOutputDrifters == 1
+        p = integrator.StepForwardToTime(t(iTime));
+        netcdf.putVar(ncid, setprecision(xDrifterID), [0 iTime-1], [nFloats 1], p(:,7));
+        netcdf.putVar(ncid, setprecision(yDrifterID), [0 iTime-1], [nFloats 1], p(:,8));
+        netcdf.putVar(ncid, setprecision(zDrifterID), [0 iTime-1], [nFloats 1], z_float);
+        netcdf.putVar(ncid, setprecision(densityDrifterID), [0 iTime-1], [nFloats 1], wavemodel.DensityAtTimePosition(t(iTime),p(:,7),p(:,8),z_float)-wavemodel.rho0);
+    end
 
 end
 % profile viewer
