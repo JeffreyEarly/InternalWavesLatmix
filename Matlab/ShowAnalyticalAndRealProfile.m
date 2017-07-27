@@ -108,10 +108,11 @@ z_stretched = interp1(s, z, sGrid );
 
 nGrid = 2^14+1; % 2^13 looks fine, but 2^14 looks perfect.
 
-im1024 = InternalModes(rho,[-D 0],z_stretched,latitude,  'method', 'wkbSpectral', 'nEVP', 1024, 'nGrid', nGrid);
-im512 = InternalModes(rho,[-D 0],z_stretched,latitude,  'method', 'wkbSpectral', 'nEVP', 512, 'nGrid', nGrid);
-im256 = InternalModes(rho,[-D 0],z_stretched,latitude,  'method', 'wkbSpectral', 'nEVP', 256, 'nGrid', nGrid);
-im128 = InternalModes(rho,[-D 0],z_stretched,latitude,  'method', 'wkbSpectral', 'nEVP', 128, 'nGrid', nGrid);
+method = 'densitySpectral';
+im1024 = InternalModes(rho,[-D 0],z_stretched,latitude,  'method', method, 'nEVP', 1024, 'nGrid', nGrid);
+im512 = InternalModes(rho,[-D 0],z_stretched,latitude,  'method', method, 'nEVP', 512, 'nGrid', nGrid);
+im256 = InternalModes(rho,[-D 0],z_stretched,latitude,  'method', method, 'nEVP', 256, 'nGrid', nGrid);
+im128 = InternalModes(rho,[-D 0],z_stretched,latitude,  'method', method, 'nEVP', 128, 'nGrid', nGrid);
 
 % Biggest issue occurs for long wavelength (k=0)...
 k = 0;

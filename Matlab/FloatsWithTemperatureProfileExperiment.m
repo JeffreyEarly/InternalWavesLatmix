@@ -11,23 +11,23 @@
 %
 % April 12th, 2017      Version 1.0
 
-N = 128;
-aspectRatio = 1;
+N = 128; % probably should be 128
+aspectRatio = 4;
 
-L = 100e3;
+L = 25e3;
 Lx = aspectRatio*L;
 Ly = L;
 Lz = 5000;
 
 Nx = aspectRatio*N;
 Ny = N;
-Nz = 64;
+Nz = 64; 
 nModes = 64;
-nEVP = 512;
+nEVP = 512; % probably should be 512
 nGrid = 2^14+1;
 
 latitude = 31;
-GMReferenceLevel = 0.5;
+GMReferenceLevel = 1.3;
 
 kappa = 5e-6;
 outputInterval = 15*60;
@@ -40,7 +40,7 @@ shouldOutputDiffusiveFloats = 0;
 shouldOutputDrifters = 0;
 
 outputfolder = '/Volumes/OceanTransfer';
-outputfolder = '/Users/jearly/Desktop';
+% outputfolder = '/Users/jearly/Desktop';
 
 precision = 'single';
 
@@ -114,10 +114,12 @@ z = interp1(s, z_lin, sGrid );
 
 shouldUseGMSpectrum = 1;
 
-wavemodel = InternalWaveModelArbitraryStratification([Lx, Ly, Lz], [Nx, Ny], rho, z, latitude, nModes,  'method', 'wkbSpectral', 'nEVP', nEVP, 'nGrid', nGrid);
+if ~exist('wavemodel','var')
+    wavemodel = InternalWaveModelArbitraryStratification([Lx, Ly, Lz], [Nx, Ny], rho, z, latitude, nModes,  'method', 'wkbSpectral', 'nEVP', nEVP, 'nGrid', nGrid);
+end
 
 wavemodel.FillOutWaveSpectrum();
-wavemodel.InitializeWithGMSpectrum(GMReferenceLevel,1);
+wavemodel.InitializeWithGMSpectrum(GMReferenceLevel,0);
 wavemodel.ShowDiagnostics();
 
 period = 2*pi/wavemodel.Nmax;
@@ -161,7 +163,7 @@ ymax = [Inf Inf];
 kappa_vector = [0 0];
 p0 = cat(2, x_float, y_float);
 
-f = @(t,y) FluxForFloatDiffusiveDrifter(t,y,z_float,wavemodel, interpolationMethod);
+f = @(t,y) FluxForDrifter(t,y,z_float,wavemodel, interpolationMethod);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -227,10 +229,12 @@ if shouldOutputEulerianFields == 1
     vVarID = netcdf.defVar(ncid, 'v', ncPrecision, [xDimID,yDimID,zDimID,tDimID]);
     wVarID = netcdf.defVar(ncid, 'w', ncPrecision, [xDimID,yDimID,zDimID,tDimID]);
     zetaVarID = netcdf.defVar(ncid, 'zeta', ncPrecision, [xDimID,yDimID,zDimID,tDimID]);
+    rhoVarID = netcdf.defVar(ncid, 'rho', ncPrecision, [xDimID,yDimID,zDimID,tDimID]);
     netcdf.putAtt(ncid,uVarID, 'units', 'm/s');
     netcdf.putAtt(ncid,vVarID, 'units', 'm/s');
     netcdf.putAtt(ncid,wVarID, 'units', 'm/s');
     netcdf.putAtt(ncid,zetaVarID, 'units', 'm');
+    netcdf.putAtt(ncid,rhoVarID, 'units', 'kg/m^3');
 end
 
 % Define the *float* dimensions
@@ -243,6 +247,10 @@ if shouldOutputDrifters == 1
     netcdf.putAtt(ncid,yDrifterID, 'units', 'm');
     netcdf.putAtt(ncid,zDrifterID, 'units', 'm');
 end
+
+% Write the density profile
+n2VarID = netcdf.defVar(ncid, 'N2', ncPrecision, zDimID);
+netcdf.putAtt(ncid,n2VarID, 'units', '1/s^2');
 
 % Write some metadata
 netcdf.putAtt(ncid,netcdf.getConstant('NC_GLOBAL'), 'latitude', latitude);
@@ -261,6 +269,7 @@ netcdf.endDef(ncid);
 netcdf.putVar(ncid, setprecision(xVarID), wavemodel.x);
 netcdf.putVar(ncid, setprecision(yVarID), wavemodel.y);
 netcdf.putVar(ncid, setprecision(zVarID), wavemodel.z);
+netcdf.putVar(ncid, n2VarID, wavemodel.N2);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -284,13 +293,15 @@ for iTime=1:length(t)
     if shouldOutputEulerianFields == 1
         [u,v]=wavemodel.VelocityFieldAtTime(t(iTime));
         [w,zeta] = wavemodel.VerticalFieldsAtTime(t(iTime));
-    
-        netcdf.putVar(ncid, setprecision(uVarID), [0 0 0 iTime-1], [wavemodel.Nx wavemodel.Ny wavemodel.Nz 1], u);
-        netcdf.putVar(ncid, setprecision(vVarID), [0 0 0 iTime-1], [wavemodel.Nx wavemodel.Ny wavemodel.Nz 1], v);
-        netcdf.putVar(ncid, setprecision(wVarID), [0 0 0 iTime-1], [wavemodel.Nx wavemodel.Ny wavemodel.Nz 1], w);
-        netcdf.putVar(ncid, setprecision(zetaVarID), [0 0 0 iTime-1], [wavemodel.Nx wavemodel.Ny wavemodel.Nz 1], zeta);
+        rho = wavemodel.DensityAtTime(t(iTime));
+        
+        netcdf.putVar(ncid, uVarID, [0 0 0 iTime-1], [wavemodel.Nx wavemodel.Ny wavemodel.Nz 1], u);
+        netcdf.putVar(ncid, vVarID, [0 0 0 iTime-1], [wavemodel.Nx wavemodel.Ny wavemodel.Nz 1], v);
+        netcdf.putVar(ncid, wVarID, [0 0 0 iTime-1], [wavemodel.Nx wavemodel.Ny wavemodel.Nz 1], w);
+        netcdf.putVar(ncid, zetaVarID, [0 0 0 iTime-1], [wavemodel.Nx wavemodel.Ny wavemodel.Nz 1], zeta);
+        netcdf.putVar(ncid, rhoVarID, [0 0 0 iTime-1], [wavemodel.Nx wavemodel.Ny wavemodel.Nz 1], rho);
     end
-    netcdf.putVar(ncid, setprecision(tVarID), iTime-1, 1, t(iTime));
+    netcdf.putVar(ncid, tVarID, iTime-1, 1, t(iTime));
     
     if shouldOutputDrifters == 1
         p = integrator.StepForwardToTime(t(iTime));
