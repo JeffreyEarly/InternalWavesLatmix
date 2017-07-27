@@ -11,7 +11,7 @@
 %
 % April 12th, 2017      Version 1.0
 
-N = 128; % probably should be 128
+N = 64; % probably should be 128
 aspectRatio = 4;
 
 L = 25e3;
@@ -21,13 +21,13 @@ Lz = 5000;
 
 Nx = aspectRatio*N;
 Ny = N;
-Nz = 64; 
+Nz = 32; 
 nModes = 64;
-nEVP = 512; % probably should be 512
+nEVP = 256; % probably should be 512
 nGrid = 2^14+1;
 
 latitude = 31;
-GMReferenceLevel = 1.3;
+GMReferenceLevel = 1.0;
 
 kappa = 5e-6;
 outputInterval = 15*60;
@@ -37,7 +37,7 @@ interpolationMethod = 'spline';
 shouldOutputEulerianFields = 1;
 shouldOutputFloats = 0;
 shouldOutputDiffusiveFloats = 0;
-shouldOutputDrifters = 0;
+shouldOutputDrifters = 1;
 
 outputfolder = '/Volumes/OceanTransfer';
 % outputfolder = '/Users/jearly/Desktop';
@@ -239,10 +239,10 @@ end
 
 % Define the *float* dimensions
 if shouldOutputDrifters == 1
+    floatDimID = netcdf.defDim(ncid, 'float_id', nFloats);
     xDrifterID = netcdf.defVar(ncid, 'x-position-drifter', ncPrecision, [floatDimID,tDimID]);
     yDrifterID = netcdf.defVar(ncid, 'y-position-drifter', ncPrecision, [floatDimID,tDimID]);
     zDrifterID = netcdf.defVar(ncid, 'z-position-drifter', ncPrecision, [floatDimID,tDimID]);
-    densityDrifterID = netcdf.defVar(ncid, 'density-drifter', ncPrecision, [floatDimID,tDimID]);
     netcdf.putAtt(ncid,xDrifterID, 'units', 'm');
     netcdf.putAtt(ncid,yDrifterID, 'units', 'm');
     netcdf.putAtt(ncid,zDrifterID, 'units', 'm');
@@ -305,10 +305,9 @@ for iTime=1:length(t)
     
     if shouldOutputDrifters == 1
         p = integrator.StepForwardToTime(t(iTime));
-        netcdf.putVar(ncid, setprecision(xDrifterID), [0 iTime-1], [nFloats 1], p(:,7));
-        netcdf.putVar(ncid, setprecision(yDrifterID), [0 iTime-1], [nFloats 1], p(:,8));
+        netcdf.putVar(ncid, setprecision(xDrifterID), [0 iTime-1], [nFloats 1], p(:,1));
+        netcdf.putVar(ncid, setprecision(yDrifterID), [0 iTime-1], [nFloats 1], p(:,2));
         netcdf.putVar(ncid, setprecision(zDrifterID), [0 iTime-1], [nFloats 1], z_float);
-        netcdf.putVar(ncid, setprecision(densityDrifterID), [0 iTime-1], [nFloats 1], wavemodel.DensityAtTimePosition(t(iTime),p(:,7),p(:,8),z_float)-wavemodel.rho0);
     end
 
 end

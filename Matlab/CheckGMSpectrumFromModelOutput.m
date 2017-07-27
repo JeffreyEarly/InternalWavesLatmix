@@ -11,7 +11,7 @@
 %
 % December 6th, 2016      Version 1.0
 
-file = '/Volumes/OceanTransfer/FloatsWithTemperatureProfileExperiment_2017-07-26T210656_256x64x16.nc';
+file = '/Volumes/OceanTransfer/FloatsWithTemperatureProfileExperiment_2017-07-26T221153_256x64x32.nc';
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -31,7 +31,7 @@ N0_GM = 5.2e-3;
 f0 = 2*(7.2921e-5)*sin(latitude*pi/180);
 Nmax = max(sqrt(N2));
 
-shouldWKBScale = 0;
+shouldWKBScale = 1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
