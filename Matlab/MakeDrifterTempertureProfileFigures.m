@@ -64,10 +64,14 @@ ax2 = subplot(1,5,[2 3 4 5]);
 pcolor(t/86400,depth,temperatureAtDepth'), shading flat, colormap(jet), hold on
 C = contourc(double(t),double(depth(depth<-20)),double(temperatureAtDepth(:,depth<-20))',[19 19]);
 i = 1;
+tIsotherm = [];
+yIsotherm = [];
 while i < size(C,2)
     j = i+C(2,i); % end
     xc = C(1,(i+1):j);
     yc = C(2,(i+1):j);
+    tIsotherm = cat(2,tIsotherm,xc);
+    yIsotherm = cat(2,yIsotherm,yc);
     plot(xc/86400,yc, 'Color', 'black', 'LineWidth', 2);
     i = j+1;
 end
@@ -80,6 +84,7 @@ caxis([17 23])
 
 ax2.Position = [ax2.Position(1)-0.03 ax2.Position(2) ax2.Position(3) ax2.Position(4)];
 
+return
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
