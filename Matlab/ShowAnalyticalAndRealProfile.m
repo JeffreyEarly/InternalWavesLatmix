@@ -79,6 +79,8 @@ end
 
 im = InternalModes(rho,[-D 0],z,latitude,  'method', 'wkbSpectral', 'nEVP', 513); % adding extra points to just confirm all is well converged.
 
+return
+
 figure
 subplot(1,2,1)
 plot(N2Latmix,zLatmix), hold on
