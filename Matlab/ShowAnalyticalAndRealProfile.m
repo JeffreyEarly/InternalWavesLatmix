@@ -8,6 +8,8 @@ rhoLatmix = ncread(file,'rho');
 N2Latmix = ncread(file,'N2');
 zLatmix = ncread(file,'z');
 
+ctdProfile = load('RepresentativeCTDProfileSite1.mat');
+
 z = linspace(min(zLatmix),max(zLatmix),250);
 z = linspace(-300,0,1024);
 
@@ -148,23 +150,33 @@ else
     N2 = @(z) (z>=z_p).*N2_surface(z) + (z<z_p & z >z_T).*N2_mid(z) + (z<=z_T).*N2_deep(z) + N2_p(z);
 end
 
-% im = InternalModes(rho,[-D 0],z,latitude,  'method', 'wkbSpectral', 'nEVP', 513); % adding extra points to just confirm all is well converged.
+[rhoFunc, N2Func, zIn] = InternalModes.StratificationProfileWithName('latmix-site1');
+rho = rhoFunc;
+N2 = N2Func;
+zP = linspace(min(zIn),max(zIn),1000);
+
+im = InternalModes(rho,zIn,z,latitude,  'method', 'wkbSpectral', 'nEVP', 513); % adding extra points to just confirm all is well converged.
 
 fprintf('%f times GM at the bottom.\n',sqrt(N2(-D))/(5.2e-3 * exp(-5000/1300)));
+
 
 
 figure
 subplot(1,2,1)
 plot(N2Latmix,zLatmix),xlog, hold on
+plot(ctdProfile.N2,ctdProfile.z)
 plot(N2(z),z)
-% plot(im.N2,z)
-% legend('latmix','analytic', 'computed')
+plot(N2Func(zP),zP)
+plot(im.N2,z)
+legend('latmix','analytic', 'computed')
 
 subplot(1,2,2)
 plot(rhoLatmix,zLatmix), hold on
+plot(1000+ctdProfile.rho,ctdProfile.z)
 plot(rho(z),z)
+plot(rhoFunc(zP),zP)
 
-% im.ShowLowestModesAtWavenumber(0.0)
+im.ShowLowestModesAtWavenumber(0.0)
 
 return
 
