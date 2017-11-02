@@ -115,6 +115,7 @@ im = InternalModes(rho,[-D 0],z,latitude,  'method', 'wkbSpectral', 'nEVP', 513)
 
 fprintf('%f times GM at the bottom.\n',sqrt(N2(-D))/(5.2e-3 * exp(-5000/1300)));
 
+
 figure
 subplot(1,2,1)
 plot(N2Latmix,zLatmix),xlog, hold on
