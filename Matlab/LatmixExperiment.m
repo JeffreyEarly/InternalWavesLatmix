@@ -23,6 +23,7 @@ Nx = aspectRatio*N;
 Ny = N;
 Nz = 32; 
 nModes = 64;
+nEVP = 128;
 
 latitude = 31;
 GMReferenceLevel = 1.0;
@@ -37,8 +38,8 @@ shouldOutputEulerianFields = 1;
 shouldOutputFloats = 1;
 shouldOutputDrifters = 1;
 
-outputfolder = '/Volumes/OceanTransfer';
-% outputfolder = '/Users/jearly/Desktop';
+% outputfolder = '/Volumes/OceanTransfer';
+outputfolder = '/Users/jearly/Desktop';
 
 precision = 'single';
 
@@ -85,7 +86,7 @@ z = interp1(s, z_lin, sGrid );
 shouldUseGMSpectrum = 1;
 
 if ~exist('wavemodel','var')
-    wavemodel = InternalWaveModelArbitraryStratification([Lx, Ly, Lz], [Nx, Ny], rho, z, latitude, nModes,  'method', 'wkbAdaptiveSpectral');
+    wavemodel = InternalWaveModelArbitraryStratification([Lx, Ly, Lz], [Nx, Ny], rho, z, latitude, nModes,  'method', 'wkbAdaptiveSpectral', 'nEVP', nEVP);
 end
 
 wavemodel.FillOutWaveSpectrum();
@@ -109,8 +110,8 @@ fprintf('Max fluid velocity: U=%.2f cm/s, W=%.2f\n',U*100,W*100);
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-dx = wavemodel.x(2)-wavemodel.x(1);
-dy = wavemodel.y(2)-wavemodel.y(1);
+dx = 2*(wavemodel.x(2)-wavemodel.x(1));
+dy = 2*(wavemodel.y(2)-wavemodel.y(1));
 nLevels = 5;
 N = floor(N/3);
 x_float = (0:N-1)*dx;
@@ -149,9 +150,15 @@ cfl = 0.25;
 advectiveDT = cfl*(wavemodel.x(2)-wavemodel.x(1))/U;
 advectiveWDT = cfl*(min(abs(diff(z))))/W;
 oscillatoryDT = period/8;
+% if min(advectiveDT,advectiveWDT) < oscillatoryDT
+%     if advectiveWDT < advectiveDT
+%         fprintf('Using the advective dt for w: %.2f\n',advectiveWDT);
+%         deltaT = advectiveWDT;
+%     else
 if advectiveDT < oscillatoryDT
-    fprintf('Using the advective dt: %.2f\n',advectiveDT);
-    deltaT = advectiveDT;
+        fprintf('Using the advective dt for (u,v): %.2f\n',advectiveDT);
+        deltaT = advectiveDT;
+%     end
 else
     fprintf('Using the oscillatory dt: %.2f\n',oscillatoryDT);
     deltaT = oscillatoryDT;
@@ -265,8 +272,8 @@ netcdf.putVar(ncid, n2VarID, wavemodel.N2);
 startTime = datetime('now');
 fprintf('Starting numerical simulation on %s\n', datestr(startTime));
 integrator = Integrator( f, y0, deltaT);
-% profile on
-for iTime=1:length(t)
+%  profile on
+for iTime=length(t)
     if iTime == 2
        startTime = datetime('now'); 
     end
@@ -308,7 +315,7 @@ for iTime=1:length(t)
     end
 
 end
-% profile viewer
+%  profile viewer
 fprintf('Ending numerical simulation on %s\n', datestr(datetime('now')));
 
 netcdf.close(ncid);	
